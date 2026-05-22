@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MarkedArena</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Hovednavigasjon">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">MA</div>
+          <div>
+            <p class="eyebrow">Gratis MVP</p>
+            <h1>MarkedArena</h1>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <a href="#dashboard" class="nav-item active">Dashboard</a>
+          <a href="#market" class="nav-item">Marked</a>
+          <a href="#trade" class="nav-item">Paper trading</a>
+          <a href="#agents" class="nav-item">Agent arena</a>
+          <a href="#roadmap" class="nav-item">Roadmap</a>
+        </nav>
+        <div class="notice">
+          <strong>Simulering</strong>
+          <span>Ingen ekte penger, ingen ekte ordre, ingen investeringsråd.</span>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Live-ish aksjesimulator</p>
+            <h2>Mennesker og AI-agenter mot markedet</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="pauseFeedButton" title="Pause/fortsett markedsfeed" aria-label="Pause/fortsett markedsfeed">⏯</button>
+            <button class="primary-button" id="resetButton">Nullstill arena</button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="section-grid dashboard-grid">
+          <article class="panel hero-panel">
+            <div>
+              <p class="eyebrow">Din portefølje</p>
+              <div class="metric-main" id="portfolioValue">$100,000</div>
+              <p class="muted" id="portfolioSummary">Startkapital klar.</p>
+            </div>
+            <canvas id="portfolioChart" width="720" height="260" aria-label="Porteføljeutvikling"></canvas>
+          </article>
+
+          <article class="panel stat-panel">
+            <p class="eyebrow">Cash</p>
+            <div class="metric" id="cashValue">$100,000</div>
+            <span class="muted">Virtuelle dollar</span>
+          </article>
+
+          <article class="panel stat-panel">
+            <p class="eyebrow">Avkastning</p>
+            <div class="metric" id="returnValue">0.00%</div>
+            <span class="muted">Mot startkapital</span>
+          </article>
+
+          <article class="panel stat-panel">
+            <p class="eyebrow">Benchmark</p>
+            <div class="metric" id="benchmarkValue">0.00%</div>
+            <span class="muted">Equal-weight market basket</span>
+          </article>
+        </section>
+
+        <section id="market" class="section-grid market-grid">
+          <article class="panel table-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Marked</p>
+                <h3>Overvåkningsliste</h3>
+              </div>
+              <span class="status-pill" id="feedStatus">Feed aktiv</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Selskap</th>
+                    <th>Pris</th>
+                    <th>Dag</th>
+                    <th>Signal</th>
+                  </tr>
+                </thead>
+                <tbody id="marketRows"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel insight-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Arena-regler</p>
+                <h3>Rettferdig konkurranse</h3>
+              </div>
+            </div>
+            <ul class="rule-list">
+              <li>Alle starter med samme kapital.</li>
+              <li>Agenter ser bare data som er tilgjengelig nå.</li>
+              <li>Slippage og gebyr kan skrus på senere.</li>
+              <li>Score måler avkastning, risiko og drawdown.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section id="trade" class="section-grid trade-grid">
+          <article class="panel trade-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Paper trading</p>
+                <h3>Legg inn simulert ordre</h3>
+              </div>
+            </div>
+            <form id="tradeForm" class="trade-form">
+              <label>
+                Ticker
+                <select id="tickerSelect"></select>
+              </label>
+              <label>
+                Handling
+                <select id="sideSelect">
+                  <option value="buy">Kjøp</option>
+                  <option value="sell">Selg</option>
+                </select>
+              </label>
+              <label>
+                Antall
+                <input id="quantityInput" type="number" min="1" step="1" value="1" />
+              </label>
+              <button class="primary-button" type="submit">Utfør ordre</button>
+            </form>
+            <p class="form-message" id="tradeMessage" aria-live="polite"></p>
+          </article>
+
+          <article class="panel holdings-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Beholdning</p>
+                <h3>Dine posisjoner</h3>
+              </div>
+            </div>
+            <div id="holdingsList" class="holdings-list"></div>
+          </article>
+        </section>
+
+        <section id="agents" class="section-grid agent-grid">
+          <article class="panel table-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Agent arena</p>
+                <h3>Leaderboard</h3>
+              </div>
+              <button class="secondary-button" id="runAgentsButton">Kjør agent-runde</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Stil</th>
+                    <th>Verdi</th>
+                    <th>Avkastning</th>
+                    <th>Siste handling</th>
+                  </tr>
+                </thead>
+                <tbody id="agentRows"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel feed-panel">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Beslutningslogg</p>
+                <h3>Hva agentene gjorde</h3>
+              </div>
+            </div>
+            <div id="agentLog" class="agent-log"></div>
+          </article>
+        </section>
+
+        <section id="roadmap" class="section-grid roadmap-grid">
+          <article class="panel roadmap-panel">
+            <p class="eyebrow">Gratis vei videre</p>
+            <h3>Fra mock-feed til ekte data</h3>
+            <div class="roadmap">
+              <div>
+                <span>1</span>
+                <strong>Simulert prototype</strong>
+                <p>Bygg tradingmotor, UI, leaderboard og agent-regler uten kostnader.</p>
+              </div>
+              <div>
+                <span>2</span>
+                <strong>Gratis historiske data</strong>
+                <p>Koble adapter mot Stooq eller annen gratis daglig datakilde med caching.</p>
+              </div>
+              <div>
+                <span>3</span>
+                <strong>Forsinket live</strong>
+                <p>Legg inn rate-limits, server-cache og datakilde som tillater visning.</p>
+              </div>
+              <div>
+                <span>4</span>
+                <strong>LLM-valg</strong>
+                <p>Start med lokale modeller eller brukerens egne API-nøkler for forklaringer.</p>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
