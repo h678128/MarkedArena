@@ -1,17 +1,17 @@
 :root {
   color-scheme: light;
-  --bg: #f4f6f4;
+  --bg: #f5f7f8;
   --surface: #ffffff;
-  --surface-soft: #eef3f0;
-  --ink: #17211d;
-  --muted: #66736d;
-  --line: #dce4df;
+  --surface-soft: #eef3f4;
+  --ink: #172022;
+  --muted: #667178;
+  --line: #dce3e6;
   --green: #157347;
   --red: #bf3d3d;
   --blue: #2457a6;
   --amber: #9a6412;
   --teal: #0c6d73;
-  --shadow: 0 14px 45px rgba(24, 38, 32, 0.09);
+  --shadow: 0 10px 28px rgba(23, 32, 34, 0.07);
 }
 
 * {
@@ -43,7 +43,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -52,9 +52,9 @@ button {
   top: 0;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
   height: 100vh;
-  padding: 26px 18px;
+  padding: 22px 16px;
   border-right: 1px solid var(--line);
   background: #fbfcfb;
 }
@@ -103,7 +103,10 @@ button {
 }
 
 .nav-item {
-  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 10px 12px;
   border-radius: 8px;
   color: var(--muted);
   font-weight: 700;
@@ -112,7 +115,7 @@ button {
 
 .nav-item:hover,
 .nav-item.active {
-  background: var(--surface-soft);
+  background: #e9f0f6;
   color: var(--ink);
 }
 
@@ -120,12 +123,12 @@ button {
   margin-top: auto;
   display: grid;
   gap: 6px;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
 }
 
 .notice strong {
@@ -133,20 +136,31 @@ button {
 }
 
 .content {
-  padding: 24px;
+  width: min(100%, 1320px);
+  padding: 22px 24px 28px;
 }
 
 .topbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin: 0 0 22px;
+  margin: 0 0 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
 }
 
 .topbar h2 {
   max-width: 780px;
-  font-size: clamp(1.85rem, 4vw, 3.9rem);
+  font-size: clamp(1.75rem, 3vw, 2.65rem);
+}
+
+.topbar-copy {
+  max-width: 620px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .topbar-actions {
@@ -160,7 +174,15 @@ button {
 .section-grid {
   display: grid;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
+}
+
+.app-view {
+  display: none;
+}
+
+.app-view.active-view {
+  display: grid;
 }
 
 .dashboard-grid {
@@ -170,9 +192,9 @@ button {
 .hero-panel {
   grid-column: span 3;
   display: grid;
-  grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
   align-items: center;
-  min-height: 310px;
+  min-height: 260px;
   overflow: hidden;
 }
 
@@ -191,18 +213,18 @@ button {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow);
-  padding: 18px;
+  padding: 16px;
 }
 
 .stat-panel {
-  min-height: 132px;
+  min-height: 118px;
 }
 
 .metric-main {
   margin: 8px 0;
-  font-size: clamp(2.2rem, 8vw, 5.2rem);
+  font-size: clamp(2rem, 6vw, 4.2rem);
   font-weight: 850;
-  line-height: 0.92;
+  line-height: 0.96;
 }
 
 .metric {
@@ -218,7 +240,8 @@ button {
 canvas {
   display: block;
   width: 100%;
-  height: 260px;
+  height: 228px;
+  border-radius: 8px;
 }
 
 .section-header {
@@ -249,7 +272,7 @@ canvas {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 660px;
+  min-width: 620px;
 }
 
 th,
@@ -314,10 +337,11 @@ tr:last-child td {
 
 .rule-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
   padding-left: 20px;
   color: var(--muted);
+  line-height: 1.45;
 }
 
 .trade-form {
@@ -410,7 +434,7 @@ select {
 .agent-log {
   display: grid;
   gap: 10px;
-  max-height: 410px;
+  max-height: 460px;
   overflow: auto;
 }
 
@@ -430,7 +454,7 @@ select {
 
 .roadmap {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 16px;
 }
@@ -475,7 +499,7 @@ select {
   }
 
   .nav-list {
-    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
     overflow-x: auto;
   }
 
@@ -540,6 +564,6 @@ select {
   }
 
   canvas {
-    height: 210px;
+    height: 200px;
   }
 }

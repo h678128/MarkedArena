@@ -17,7 +17,7 @@
           </div>
         </div>
         <nav class="nav-list">
-          <a href="#dashboard" class="nav-item active">Dashboard</a>
+          <a href="#dashboard" class="nav-item active" aria-current="page">Dashboard</a>
           <a href="#market" class="nav-item">Marked</a>
           <a href="#trade" class="nav-item">Paper trading</a>
           <a href="#agents" class="nav-item">Agent arena</a>
@@ -32,8 +32,9 @@
       <main class="content">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Live-ish aksjesimulator</p>
-            <h2>Mennesker og AI-agenter mot markedet</h2>
+            <p class="eyebrow" id="viewEyebrow">Live-ish aksjesimulator</p>
+            <h2 id="viewTitle">Dashboard</h2>
+            <p class="topbar-copy" id="viewSummary">Følg porteføljen din, benchmark og markedsfeed fra ett ryddig startpunkt.</p>
           </div>
           <div class="topbar-actions">
             <button class="icon-button" id="pauseFeedButton" title="Pause/fortsett markedsfeed" aria-label="Pause/fortsett markedsfeed">⏯</button>
@@ -41,7 +42,7 @@
           </div>
         </header>
 
-        <section id="dashboard" class="section-grid dashboard-grid">
+        <section id="dashboard" class="section-grid dashboard-grid app-view active-view">
           <article class="panel hero-panel">
             <div>
               <p class="eyebrow">Din portefølje</p>
@@ -70,7 +71,7 @@
           </article>
         </section>
 
-        <section id="market" class="section-grid market-grid">
+        <section id="market" class="section-grid market-grid app-view">
           <article class="panel table-panel">
             <div class="section-header">
               <div>
@@ -111,7 +112,7 @@
           </article>
         </section>
 
-        <section id="trade" class="section-grid trade-grid">
+        <section id="trade" class="section-grid trade-grid app-view">
           <article class="panel trade-panel">
             <div class="section-header">
               <div>
@@ -151,7 +152,7 @@
           </article>
         </section>
 
-        <section id="agents" class="section-grid agent-grid">
+        <section id="agents" class="section-grid agent-grid app-view">
           <article class="panel table-panel">
             <div class="section-header">
               <div>
@@ -187,7 +188,7 @@
           </article>
         </section>
 
-        <section id="roadmap" class="section-grid roadmap-grid">
+        <section id="roadmap" class="section-grid roadmap-grid app-view">
           <article class="panel roadmap-panel">
             <p class="eyebrow">Gratis vei videre</p>
             <h3>Fra mock-feed til ekte data</h3>

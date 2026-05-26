@@ -127,6 +127,34 @@ let state = loadState();
 let feedPaused = false;
 let tickCount = 0;
 
+const views = {
+  dashboard: {
+    eyebrow: "Live-ish aksjesimulator",
+    title: "Dashboard",
+    summary: "Følg porteføljen din, benchmark og markedsfeed fra ett ryddig startpunkt.",
+  },
+  market: {
+    eyebrow: "Marked",
+    title: "Overvåkningsliste",
+    summary: "Skann pris, dagsendring og enkle signaler uten å blande inn tradingpanelet.",
+  },
+  trade: {
+    eyebrow: "Paper trading",
+    title: "Legg inn simulert ordre",
+    summary: "Velg ticker, handling og antall når du vil teste en posisjon med virtuelle dollar.",
+  },
+  agents: {
+    eyebrow: "Agent arena",
+    title: "Leaderboard og beslutninger",
+    summary: "Kjør en agent-runde og sammenlign strategiagentene mot benchmark.",
+  },
+  roadmap: {
+    eyebrow: "Gratis vei videre",
+    title: "Fra mock-feed til ekte data",
+    summary: "Hold retningen synlig uten at veikartet tar plass i den daglige arbeidsflyten.",
+  },
+};
+
 const formatMoney = (value) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -224,7 +252,9 @@ function render() {
   renderHoldings();
   renderAgents();
   renderLog();
-  drawPortfolioChart();
+  if (document.querySelector("#dashboard")?.classList.contains("active-view")) {
+    drawPortfolioChart();
+  }
   saveState();
 }
 
@@ -499,12 +529,57 @@ function resetArena() {
 
 function bindNav() {
   const links = [...document.querySelectorAll(".nav-item")];
+  const sections = [...document.querySelectorAll(".app-view")];
+
+  function setActiveView(viewId, updateUrl = true) {
+    const nextView = views[viewId] ? viewId : "dashboard";
+
+    sections.forEach((section) => {
+      section.classList.toggle("active-view", section.id === nextView);
+    });
+
+    links.forEach((item) => {
+      const itemView = item.getAttribute("href")?.replace("#", "");
+      item.classList.toggle("active", itemView === nextView);
+      if (itemView === nextView) {
+        item.setAttribute("aria-current", "page");
+      } else {
+        item.removeAttribute("aria-current");
+      }
+    });
+
+    document.querySelector("#viewEyebrow").textContent = views[nextView].eyebrow;
+    document.querySelector("#viewTitle").textContent = views[nextView].title;
+    document.querySelector("#viewSummary").textContent = views[nextView].summary;
+
+    if (updateUrl && window.location.hash !== `#${nextView}`) {
+      history.pushState(null, "", `#${nextView}`);
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (nextView === "dashboard") {
+      requestAnimationFrame(drawPortfolioChart);
+    }
+  }
+
   links.forEach((link) => {
-    link.addEventListener("click", () => {
-      links.forEach((item) => item.classList.remove("active"));
-      link.classList.add("active");
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const viewId = link.getAttribute("href")?.replace("#", "");
+      setActiveView(viewId);
     });
   });
+
+  window.addEventListener("hashchange", () => {
+    setActiveView(window.location.hash.replace("#", ""), false);
+  });
+
+  window.addEventListener("popstate", () => {
+    setActiveView(window.location.hash.replace("#", ""), false);
+  });
+
+  setActiveView(window.location.hash.replace("#", ""), false);
 }
 
 document.querySelector("#tradeForm").addEventListener("submit", handleTrade);
