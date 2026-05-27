@@ -1,5 +1,6 @@
 const STARTING_CASH = 100000;
 const STORAGE_KEY = "markedarena-state-v1";
+const LAYOUT_KEY = "markedarena-layout-v1";
 
 const stocks = [
   {
@@ -127,34 +128,6 @@ let state = loadState();
 let feedPaused = false;
 let tickCount = 0;
 
-const views = {
-  dashboard: {
-    eyebrow: "Live-ish aksjesimulator",
-    title: "Dashboard",
-    summary: "Følg porteføljen din, benchmark og markedsfeed fra ett ryddig startpunkt.",
-  },
-  market: {
-    eyebrow: "Marked",
-    title: "Overvåkningsliste",
-    summary: "Skann pris, dagsendring og enkle signaler uten å blande inn tradingpanelet.",
-  },
-  trade: {
-    eyebrow: "Paper trading",
-    title: "Legg inn simulert ordre",
-    summary: "Velg ticker, handling og antall når du vil teste en posisjon med virtuelle dollar.",
-  },
-  agents: {
-    eyebrow: "Agent arena",
-    title: "Leaderboard og beslutninger",
-    summary: "Kjør en agent-runde og sammenlign strategiagentene mot benchmark.",
-  },
-  roadmap: {
-    eyebrow: "Gratis vei videre",
-    title: "Fra mock-feed til ekte data",
-    summary: "Hold retningen synlig uten at veikartet tar plass i den daglige arbeidsflyten.",
-  },
-};
-
 const formatMoney = (value) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -252,9 +225,7 @@ function render() {
   renderHoldings();
   renderAgents();
   renderLog();
-  if (document.querySelector("#dashboard")?.classList.contains("active-view")) {
-    drawPortfolioChart();
-  }
+  drawPortfolioChart();
   saveState();
 }
 
@@ -286,7 +257,6 @@ function renderMarket() {
           <td>
             <div class="ticker-cell">
               <span class="ticker-badge">${stock.ticker}</span>
-              <span>${stock.ticker}</span>
             </div>
           </td>
           <td>${stock.name}</td>
@@ -527,59 +497,32 @@ function resetArena() {
   render();
 }
 
-function bindNav() {
-  const links = [...document.querySelectorAll(".nav-item")];
-  const sections = [...document.querySelectorAll(".app-view")];
+function setLayout(layout) {
+  const nextLayout = layout === "split" ? "split" : "standard";
+  const floor = document.querySelector("#tradingFloor");
+  const buttons = [...document.querySelectorAll(".layout-button")];
 
-  function setActiveView(viewId, updateUrl = true) {
-    const nextView = views[viewId] ? viewId : "dashboard";
+  floor.classList.toggle("standard-layout", nextLayout === "standard");
+  floor.classList.toggle("split-layout", nextLayout === "split");
 
-    sections.forEach((section) => {
-      section.classList.toggle("active-view", section.id === nextView);
-    });
+  buttons.forEach((button) => {
+    const isActive = button.dataset.layout === nextLayout;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 
-    links.forEach((item) => {
-      const itemView = item.getAttribute("href")?.replace("#", "");
-      item.classList.toggle("active", itemView === nextView);
-      if (itemView === nextView) {
-        item.setAttribute("aria-current", "page");
-      } else {
-        item.removeAttribute("aria-current");
-      }
-    });
+  localStorage.setItem(LAYOUT_KEY, nextLayout);
+  requestAnimationFrame(drawPortfolioChart);
+}
 
-    document.querySelector("#viewEyebrow").textContent = views[nextView].eyebrow;
-    document.querySelector("#viewTitle").textContent = views[nextView].title;
-    document.querySelector("#viewSummary").textContent = views[nextView].summary;
-
-    if (updateUrl && window.location.hash !== `#${nextView}`) {
-      history.pushState(null, "", `#${nextView}`);
-    }
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-
-    if (nextView === "dashboard") {
-      requestAnimationFrame(drawPortfolioChart);
-    }
-  }
-
-  links.forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const viewId = link.getAttribute("href")?.replace("#", "");
-      setActiveView(viewId);
+function bindLayoutControls() {
+  document.querySelectorAll(".layout-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      setLayout(button.dataset.layout);
     });
   });
 
-  window.addEventListener("hashchange", () => {
-    setActiveView(window.location.hash.replace("#", ""), false);
-  });
-
-  window.addEventListener("popstate", () => {
-    setActiveView(window.location.hash.replace("#", ""), false);
-  });
-
-  setActiveView(window.location.hash.replace("#", ""), false);
+  setLayout(localStorage.getItem(LAYOUT_KEY));
 }
 
 document.querySelector("#tradeForm").addEventListener("submit", handleTrade);
@@ -591,6 +534,6 @@ document.querySelector("#pauseFeedButton").addEventListener("click", () => {
 });
 window.addEventListener("resize", drawPortfolioChart);
 
-bindNav();
+bindLayoutControls();
 render();
 setInterval(tickMarket, 2600);

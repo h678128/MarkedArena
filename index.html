@@ -8,21 +8,28 @@
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Hovednavigasjon">
+      <aside class="sidebar" aria-label="Arbeidsflate">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">MA</div>
           <div>
-            <p class="eyebrow">Gratis MVP</p>
+            <p class="eyebrow">Trading floor</p>
             <h1>MarkedArena</h1>
           </div>
         </div>
-        <nav class="nav-list">
-          <a href="#dashboard" class="nav-item active" aria-current="page">Dashboard</a>
-          <a href="#market" class="nav-item">Marked</a>
-          <a href="#trade" class="nav-item">Paper trading</a>
-          <a href="#agents" class="nav-item">Agent arena</a>
-          <a href="#roadmap" class="nav-item">Roadmap</a>
-        </nav>
+
+        <section class="workspace-controls" aria-label="Layout">
+          <p class="control-label">Vindu</p>
+          <div class="segmented-control">
+            <button class="layout-button active" type="button" data-layout="standard" aria-pressed="true">Standard</button>
+            <button class="layout-button" type="button" data-layout="split" aria-pressed="false">Split</button>
+          </div>
+        </section>
+
+        <div class="floor-status">
+          <span class="status-pill" id="feedStatus">Feed aktiv</span>
+          <span>Simulert marked</span>
+        </div>
+
         <div class="notice">
           <strong>Simulering</strong>
           <span>Ingen ekte penger, ingen ekte ordre, ingen investeringsråd.</span>
@@ -32,9 +39,9 @@
       <main class="content">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="viewEyebrow">Live-ish aksjesimulator</p>
-            <h2 id="viewTitle">Dashboard</h2>
-            <p class="topbar-copy" id="viewSummary">Følg porteføljen din, benchmark og markedsfeed fra ett ryddig startpunkt.</p>
+            <p class="eyebrow">Alt-i-ett arbeidsflate</p>
+            <h2>Trading floor</h2>
+            <p class="topbar-copy">Portefølje, marked, ordre og agenter i samme standardvindu.</p>
           </div>
           <div class="topbar-actions">
             <button class="icon-button" id="pauseFeedButton" title="Pause/fortsett markedsfeed" aria-label="Pause/fortsett markedsfeed">⏯</button>
@@ -42,14 +49,11 @@
           </div>
         </header>
 
-        <section id="dashboard" class="section-grid dashboard-grid app-view active-view">
-          <article class="panel hero-panel">
-            <div>
-              <p class="eyebrow">Din portefølje</p>
-              <div class="metric-main" id="portfolioValue">$100,000</div>
-              <p class="muted" id="portfolioSummary">Startkapital klar.</p>
-            </div>
-            <canvas id="portfolioChart" width="720" height="260" aria-label="Porteføljeutvikling"></canvas>
+        <section class="trading-floor standard-layout" id="tradingFloor" aria-label="Trading floor">
+          <article class="panel stat-panel">
+            <p class="eyebrow">Portefølje</p>
+            <div class="metric" id="portfolioValue">$100,000</div>
+            <span class="muted" id="portfolioSummary">Startkapital klar.</span>
           </article>
 
           <article class="panel stat-panel">
@@ -67,18 +71,26 @@
           <article class="panel stat-panel">
             <p class="eyebrow">Benchmark</p>
             <div class="metric" id="benchmarkValue">0.00%</div>
-            <span class="muted">Equal-weight market basket</span>
+            <span class="muted">Equal-weight basket</span>
           </article>
-        </section>
 
-        <section id="market" class="section-grid market-grid app-view">
-          <article class="panel table-panel">
-            <div class="section-header">
+          <article class="panel floor-window chart-window">
+            <div class="window-bar">
+              <div>
+                <p class="eyebrow">Chart</p>
+                <h3>Porteføljehistorikk</h3>
+              </div>
+              <span class="window-tag">Live-ish</span>
+            </div>
+            <canvas id="portfolioChart" width="720" height="260" aria-label="Porteføljeutvikling"></canvas>
+          </article>
+
+          <article class="panel floor-window market-window">
+            <div class="window-bar">
               <div>
                 <p class="eyebrow">Marked</p>
                 <h3>Overvåkningsliste</h3>
               </div>
-              <span class="status-pill" id="feedStatus">Feed aktiv</span>
             </div>
             <div class="table-wrap">
               <table>
@@ -96,28 +108,11 @@
             </div>
           </article>
 
-          <article class="panel insight-panel">
-            <div class="section-header">
+          <article class="panel floor-window order-window">
+            <div class="window-bar">
               <div>
-                <p class="eyebrow">Arena-regler</p>
-                <h3>Rettferdig konkurranse</h3>
-              </div>
-            </div>
-            <ul class="rule-list">
-              <li>Alle starter med samme kapital.</li>
-              <li>Agenter ser bare data som er tilgjengelig nå.</li>
-              <li>Slippage og gebyr kan skrus på senere.</li>
-              <li>Score måler avkastning, risiko og drawdown.</li>
-            </ul>
-          </article>
-        </section>
-
-        <section id="trade" class="section-grid trade-grid app-view">
-          <article class="panel trade-panel">
-            <div class="section-header">
-              <div>
-                <p class="eyebrow">Paper trading</p>
-                <h3>Legg inn simulert ordre</h3>
+                <p class="eyebrow">Ordre</p>
+                <h3>Paper trading</h3>
               </div>
             </div>
             <form id="tradeForm" class="trade-form">
@@ -141,25 +136,23 @@
             <p class="form-message" id="tradeMessage" aria-live="polite"></p>
           </article>
 
-          <article class="panel holdings-panel">
-            <div class="section-header">
+          <article class="panel floor-window holdings-window">
+            <div class="window-bar">
               <div>
-                <p class="eyebrow">Beholdning</p>
+                <p class="eyebrow">Bok</p>
                 <h3>Dine posisjoner</h3>
               </div>
             </div>
             <div id="holdingsList" class="holdings-list"></div>
           </article>
-        </section>
 
-        <section id="agents" class="section-grid agent-grid app-view">
-          <article class="panel table-panel">
-            <div class="section-header">
+          <article class="panel floor-window agents-window">
+            <div class="window-bar">
               <div>
                 <p class="eyebrow">Agent arena</p>
                 <h3>Leaderboard</h3>
               </div>
-              <button class="secondary-button" id="runAgentsButton">Kjør agent-runde</button>
+              <button class="secondary-button" id="runAgentsButton">Kjør runde</button>
             </div>
             <div class="table-wrap">
               <table>
@@ -177,43 +170,14 @@
             </div>
           </article>
 
-          <article class="panel feed-panel">
-            <div class="section-header">
+          <article class="panel floor-window log-window">
+            <div class="window-bar">
               <div>
-                <p class="eyebrow">Beslutningslogg</p>
-                <h3>Hva agentene gjorde</h3>
+                <p class="eyebrow">Logg</p>
+                <h3>Beslutninger</h3>
               </div>
             </div>
             <div id="agentLog" class="agent-log"></div>
-          </article>
-        </section>
-
-        <section id="roadmap" class="section-grid roadmap-grid app-view">
-          <article class="panel roadmap-panel">
-            <p class="eyebrow">Gratis vei videre</p>
-            <h3>Fra mock-feed til ekte data</h3>
-            <div class="roadmap">
-              <div>
-                <span>1</span>
-                <strong>Simulert prototype</strong>
-                <p>Bygg tradingmotor, UI, leaderboard og agent-regler uten kostnader.</p>
-              </div>
-              <div>
-                <span>2</span>
-                <strong>Gratis historiske data</strong>
-                <p>Koble adapter mot Stooq eller annen gratis daglig datakilde med caching.</p>
-              </div>
-              <div>
-                <span>3</span>
-                <strong>Forsinket live</strong>
-                <p>Legg inn rate-limits, server-cache og datakilde som tillater visning.</p>
-              </div>
-              <div>
-                <span>4</span>
-                <strong>LLM-valg</strong>
-                <p>Start med lokale modeller eller brukerens egne API-nøkler for forklaringer.</p>
-              </div>
-            </div>
           </article>
         </section>
       </main>
