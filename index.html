@@ -25,6 +25,13 @@
           </div>
         </section>
 
+        <nav class="split-nav" aria-label="Split-visning">
+          <button class="split-nav-item active" type="button" data-split-target="dashboard" aria-current="page">Dashboard</button>
+          <button class="split-nav-item" type="button" data-split-target="market">Marked</button>
+          <button class="split-nav-item" type="button" data-split-target="trade">Paper trading</button>
+          <button class="split-nav-item" type="button" data-split-target="agents">Agent arena</button>
+        </nav>
+
         <div class="floor-status">
           <span class="status-pill" id="feedStatus">Feed aktiv</span>
           <span>Simulert marked</span>
@@ -39,9 +46,9 @@
       <main class="content">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Alt-i-ett arbeidsflate</p>
-            <h2>Trading floor</h2>
-            <p class="topbar-copy">Portefølje, marked, ordre og agenter i samme standardvindu.</p>
+            <p class="eyebrow" id="workspaceEyebrow">Alt-i-ett arbeidsflate</p>
+            <h2 id="workspaceTitle">Trading floor</h2>
+            <p class="topbar-copy" id="workspaceSummary">Portefølje, marked, ordre og agenter i samme standardvindu.</p>
           </div>
           <div class="topbar-actions">
             <button class="icon-button" id="pauseFeedButton" title="Pause/fortsett markedsfeed" aria-label="Pause/fortsett markedsfeed">⏯</button>
@@ -50,31 +57,31 @@
         </header>
 
         <section class="trading-floor standard-layout" id="tradingFloor" aria-label="Trading floor">
-          <article class="panel stat-panel">
+          <article class="panel stat-panel" data-split-view="dashboard">
             <p class="eyebrow">Portefølje</p>
             <div class="metric" id="portfolioValue">$100,000</div>
             <span class="muted" id="portfolioSummary">Startkapital klar.</span>
           </article>
 
-          <article class="panel stat-panel">
+          <article class="panel stat-panel" data-split-view="dashboard">
             <p class="eyebrow">Cash</p>
             <div class="metric" id="cashValue">$100,000</div>
             <span class="muted">Virtuelle dollar</span>
           </article>
 
-          <article class="panel stat-panel">
+          <article class="panel stat-panel" data-split-view="dashboard">
             <p class="eyebrow">Avkastning</p>
             <div class="metric" id="returnValue">0.00%</div>
             <span class="muted">Mot startkapital</span>
           </article>
 
-          <article class="panel stat-panel">
+          <article class="panel stat-panel" data-split-view="dashboard">
             <p class="eyebrow">Benchmark</p>
             <div class="metric" id="benchmarkValue">0.00%</div>
             <span class="muted">Equal-weight basket</span>
           </article>
 
-          <article class="panel floor-window chart-window">
+          <article class="panel floor-window chart-window" data-split-view="dashboard">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Chart</p>
@@ -85,7 +92,7 @@
             <canvas id="portfolioChart" width="720" height="260" aria-label="Porteføljeutvikling"></canvas>
           </article>
 
-          <article class="panel floor-window market-window">
+          <article class="panel floor-window market-window" data-split-view="market">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Marked</p>
@@ -108,7 +115,7 @@
             </div>
           </article>
 
-          <article class="panel floor-window order-window">
+          <article class="panel floor-window order-window" data-split-view="trade">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Ordre</p>
@@ -136,7 +143,7 @@
             <p class="form-message" id="tradeMessage" aria-live="polite"></p>
           </article>
 
-          <article class="panel floor-window holdings-window">
+          <article class="panel floor-window holdings-window" data-split-view="trade">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Bok</p>
@@ -146,7 +153,7 @@
             <div id="holdingsList" class="holdings-list"></div>
           </article>
 
-          <article class="panel floor-window agents-window">
+          <article class="panel floor-window agents-window" data-split-view="agents">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Agent arena</p>
@@ -170,7 +177,7 @@
             </div>
           </article>
 
-          <article class="panel floor-window log-window">
+          <article class="panel floor-window log-window" data-split-view="agents">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Logg</p>

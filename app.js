@@ -1,6 +1,7 @@
 const STARTING_CASH = 100000;
 const STORAGE_KEY = "markedarena-state-v1";
 const LAYOUT_KEY = "markedarena-layout-v1";
+const SPLIT_VIEW_KEY = "markedarena-split-view-v1";
 
 const stocks = [
   {
@@ -127,6 +128,37 @@ const agentsTemplate = [
 let state = loadState();
 let feedPaused = false;
 let tickCount = 0;
+let currentLayout = "standard";
+let currentSplitView = localStorage.getItem(SPLIT_VIEW_KEY) || "dashboard";
+
+const standardHeader = {
+  eyebrow: "Alt-i-ett arbeidsflate",
+  title: "Trading floor",
+  summary: "Portefølje, marked, ordre og agenter i samme standardvindu.",
+};
+
+const splitViews = {
+  dashboard: {
+    eyebrow: "Split-visning",
+    title: "Dashboard",
+    summary: "Portefølje, cash, avkastning, benchmark og historikk i én rolig oversikt.",
+  },
+  market: {
+    eyebrow: "Split-visning",
+    title: "Marked",
+    summary: "Overvåkningslisten med pris, dagsendring og signaler.",
+  },
+  trade: {
+    eyebrow: "Split-visning",
+    title: "Paper trading",
+    summary: "Ordrepanel og posisjoner samlet for simulert handel.",
+  },
+  agents: {
+    eyebrow: "Split-visning",
+    title: "Agent arena",
+    summary: "Leaderboard og beslutningslogg for strategiagentene.",
+  },
+};
 
 const formatMoney = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -497,13 +529,47 @@ function resetArena() {
   render();
 }
 
+function updateWorkspaceHeader() {
+  const header = currentLayout === "split" ? splitViews[currentSplitView] : standardHeader;
+  document.querySelector("#workspaceEyebrow").textContent = header.eyebrow;
+  document.querySelector("#workspaceTitle").textContent = header.title;
+  document.querySelector("#workspaceSummary").textContent = header.summary;
+}
+
+function setSplitView(view) {
+  currentSplitView = splitViews[view] ? view : "dashboard";
+
+  document.querySelectorAll("[data-split-view]").forEach((panel) => {
+    panel.classList.toggle("active-split-panel", panel.dataset.splitView === currentSplitView);
+  });
+
+  document.querySelectorAll(".split-nav-item").forEach((button) => {
+    const isActive = button.dataset.splitTarget === currentSplitView;
+    button.classList.toggle("active", isActive);
+    if (isActive) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
+  });
+
+  localStorage.setItem(SPLIT_VIEW_KEY, currentSplitView);
+  updateWorkspaceHeader();
+
+  if (currentSplitView === "dashboard") {
+    requestAnimationFrame(drawPortfolioChart);
+  }
+}
+
 function setLayout(layout) {
   const nextLayout = layout === "split" ? "split" : "standard";
   const floor = document.querySelector("#tradingFloor");
   const buttons = [...document.querySelectorAll(".layout-button")];
+  currentLayout = nextLayout;
 
   floor.classList.toggle("standard-layout", nextLayout === "standard");
   floor.classList.toggle("split-layout", nextLayout === "split");
+  document.body.classList.toggle("split-mode", nextLayout === "split");
 
   buttons.forEach((button) => {
     const isActive = button.dataset.layout === nextLayout;
@@ -512,6 +578,8 @@ function setLayout(layout) {
   });
 
   localStorage.setItem(LAYOUT_KEY, nextLayout);
+  setSplitView(currentSplitView);
+  updateWorkspaceHeader();
   requestAnimationFrame(drawPortfolioChart);
 }
 
@@ -519,6 +587,12 @@ function bindLayoutControls() {
   document.querySelectorAll(".layout-button").forEach((button) => {
     button.addEventListener("click", () => {
       setLayout(button.dataset.layout);
+    });
+  });
+
+  document.querySelectorAll(".split-nav-item").forEach((button) => {
+    button.addEventListener("click", () => {
+      setSplitView(button.dataset.splitTarget);
     });
   });
 

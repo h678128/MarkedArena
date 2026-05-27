@@ -133,6 +133,32 @@ button {
   color: #fff;
 }
 
+.split-nav {
+  display: none;
+  gap: 6px;
+}
+
+body.split-mode .split-nav {
+  display: grid;
+}
+
+.split-nav-item {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+  text-align: left;
+  padding: 0 12px;
+}
+
+.split-nav-item:hover,
+.split-nav-item.active {
+  background: #e8eff3;
+  color: var(--ink);
+}
+
 .floor-status,
 .notice {
   display: grid;
@@ -202,6 +228,18 @@ button {
   align-items: start;
 }
 
+.split-layout [data-split-view]:not(.active-split-panel) {
+  display: none;
+}
+
+.split-layout .active-split-panel {
+  display: flex;
+}
+
+.split-layout .stat-panel.active-split-panel {
+  display: grid;
+}
+
 .panel {
   min-width: 0;
   border: 1px solid var(--line);
@@ -266,6 +304,12 @@ button {
 .split-layout .market-window,
 .split-layout .agents-window {
   min-height: 360px;
+}
+
+.split-layout .chart-window.active-split-panel,
+.split-layout .market-window.active-split-panel,
+.split-layout .agents-window.active-split-panel {
+  grid-column: 1 / -1;
 }
 
 .split-layout .order-window,
