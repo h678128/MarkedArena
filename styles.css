@@ -448,6 +448,38 @@ tr:last-child td {
   padding: 14px;
 }
 
+.order-preview {
+  display: grid;
+  gap: 9px;
+  margin: 0 14px 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.order-preview div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.order-preview span,
+.order-preview p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.order-preview strong {
+  font-size: 0.92rem;
+}
+
+.order-preview p {
+  margin: 2px 0 0;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -499,6 +531,11 @@ select {
 .icon-button:hover,
 .layout-button:hover {
   filter: brightness(0.96);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .form-message {

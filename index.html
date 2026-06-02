@@ -138,8 +138,31 @@
                 Antall
                 <input id="quantityInput" type="number" min="1" step="1" value="1" />
               </label>
-              <button class="primary-button" type="submit">Utfør ordre</button>
+              <button class="primary-button" id="submitTradeButton" type="submit">Utfør ordre</button>
             </form>
+            <div class="order-preview" aria-label="Ordreforhåndsvisning">
+              <div>
+                <span>Markedspris</span>
+                <strong id="previewMarketPrice">-</strong>
+              </div>
+              <div>
+                <span>Utførelsespris</span>
+                <strong id="previewExecutionPrice">-</strong>
+              </div>
+              <div>
+                <span>Gebyr</span>
+                <strong id="previewFee">-</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong id="previewTotal">-</strong>
+              </div>
+              <div>
+                <span>Cash etter</span>
+                <strong id="previewCashAfter">-</strong>
+              </div>
+              <p id="previewNote">Slippage 0.10% + gebyr 0.10%</p>
+            </div>
             <p class="form-message" id="tradeMessage" aria-live="polite"></p>
           </article>
 

@@ -2,6 +2,8 @@ const STARTING_CASH = 100000;
 const STORAGE_KEY = "markedarena-state-v1";
 const LAYOUT_KEY = "markedarena-layout-v1";
 const SPLIT_VIEW_KEY = "markedarena-split-view-v1";
+const SLIPPAGE_RATE = 0.001;
+const FEE_RATE = 0.001;
 
 const stocks = [
   {
@@ -257,6 +259,7 @@ function render() {
   renderHoldings();
   renderAgents();
   renderLog();
+  updateOrderPreview();
   drawPortfolioChart();
   saveState();
 }
@@ -413,30 +416,101 @@ function drawPortfolioChart() {
   context.fillText("Porteføljehistorikk", padding, 24);
 }
 
-function executeTrade(portfolio, ticker, side, quantity) {
+function orderQuote(portfolio, ticker, side, quantity) {
   const stock = stockByTicker(ticker);
-  if (!stock || quantity <= 0) {
-    return { ok: false, message: "Ugyldig ordre." };
+  const amount = Number(quantity);
+
+  if (!stock || !Number.isFinite(amount) || amount <= 0) {
+    return {
+      ok: false,
+      reason: "Ugyldig ordre.",
+      stock,
+      quantity: amount,
+      marketPrice: stock?.price || 0,
+      executionPrice: stock?.price || 0,
+      fee: 0,
+      cashAfter: portfolio.cash,
+      total: 0,
+    };
   }
 
-  const cost = stock.price * quantity;
+  const isBuy = side === "buy";
+  const executionPrice = stock.price * (isBuy ? 1 + SLIPPAGE_RATE : 1 - SLIPPAGE_RATE);
+  const gross = executionPrice * amount;
+  const fee = gross * FEE_RATE;
+  const total = isBuy ? gross + fee : gross - fee;
+  const owned = portfolio.holdings[ticker] || 0;
+  const cashAfter = isBuy ? portfolio.cash - total : portfolio.cash + total;
+  let ok = true;
+  let reason = "";
+
+  if (isBuy && cashAfter < -0.0001) {
+    ok = false;
+    reason = "Ikke nok virtuell cash.";
+  }
+
+  if (!isBuy && owned < amount) {
+    ok = false;
+    reason = `Du eier bare ${owned.toFixed(2)} ${ticker}.`;
+  }
+
+  return {
+    ok,
+    reason,
+    stock,
+    quantity: amount,
+    marketPrice: stock.price,
+    executionPrice,
+    gross,
+    fee,
+    total,
+    cashAfter,
+    side,
+  };
+}
+
+function updateOrderPreview() {
+  const ticker = document.querySelector("#tickerSelect").value;
+  const side = document.querySelector("#sideSelect").value;
+  const quantity = Number(document.querySelector("#quantityInput").value);
+  const quote = orderQuote(state, ticker, side, quantity);
+  const submitButton = document.querySelector("#submitTradeButton");
+  const previewNote = document.querySelector("#previewNote");
+
+  document.querySelector("#previewMarketPrice").textContent = quote.stock ? formatPrice(quote.marketPrice) : "-";
+  document.querySelector("#previewExecutionPrice").textContent = quote.stock ? formatPrice(quote.executionPrice) : "-";
+  document.querySelector("#previewFee").textContent = formatMoney(quote.fee);
+  document.querySelector("#previewTotal").textContent = formatMoney(quote.total);
+  document.querySelector("#previewCashAfter").textContent = formatMoney(quote.cashAfter);
+
+  submitButton.disabled = !quote.ok;
+  previewNote.textContent = quote.ok ? "Slippage 0.10% + gebyr 0.10%" : quote.reason;
+  previewNote.className = quote.ok ? "" : "negative";
+}
+
+function executeTrade(portfolio, ticker, side, quantity) {
+  const quote = orderQuote(portfolio, ticker, side, quantity);
+  if (!quote.ok) {
+    return { ok: false, message: quote.reason };
+  }
+
   if (side === "buy") {
-    if (portfolio.cash < cost) {
-      return { ok: false, message: "Ikke nok virtuell cash." };
-    }
-    portfolio.cash -= cost;
-    portfolio.holdings[ticker] = (portfolio.holdings[ticker] || 0) + quantity;
-    return { ok: true, message: `Kjøpte ${quantity.toFixed(2)} ${ticker} til ${formatPrice(stock.price)}.` };
+    portfolio.cash -= quote.total;
+    portfolio.holdings[ticker] = (portfolio.holdings[ticker] || 0) + quote.quantity;
+    return {
+      ok: true,
+      message: `Kjøpte ${quote.quantity.toFixed(2)} ${ticker} til ${formatPrice(quote.executionPrice)} inkl. ${formatMoney(quote.fee)} gebyr.`,
+    };
   }
 
   const owned = portfolio.holdings[ticker] || 0;
-  if (owned < quantity) {
-    return { ok: false, message: `Du eier bare ${owned.toFixed(2)} ${ticker}.` };
-  }
-  portfolio.cash += cost;
-  portfolio.holdings[ticker] = owned - quantity;
+  portfolio.cash += quote.total;
+  portfolio.holdings[ticker] = owned - quote.quantity;
   if (portfolio.holdings[ticker] <= 0.0001) delete portfolio.holdings[ticker];
-  return { ok: true, message: `Solgte ${quantity.toFixed(2)} ${ticker} til ${formatPrice(stock.price)}.` };
+  return {
+    ok: true,
+    message: `Solgte ${quote.quantity.toFixed(2)} ${ticker} til ${formatPrice(quote.executionPrice)} etter ${formatMoney(quote.fee)} gebyr.`,
+  };
 }
 
 function handleTrade(event) {
@@ -600,6 +674,11 @@ function bindLayoutControls() {
 }
 
 document.querySelector("#tradeForm").addEventListener("submit", handleTrade);
+["#tickerSelect", "#sideSelect", "#quantityInput"].forEach((selector) => {
+  const element = document.querySelector(selector);
+  element.addEventListener("input", updateOrderPreview);
+  element.addEventListener("change", updateOrderPreview);
+});
 document.querySelector("#runAgentsButton").addEventListener("click", runAgents);
 document.querySelector("#resetButton").addEventListener("click", resetArena);
 document.querySelector("#pauseFeedButton").addEventListener("click", () => {
