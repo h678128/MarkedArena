@@ -29,6 +29,7 @@
           <button class="split-nav-item active" type="button" data-split-target="dashboard" aria-current="page">Dashboard</button>
           <button class="split-nav-item" type="button" data-split-target="market">Marked</button>
           <button class="split-nav-item" type="button" data-split-target="trade">Paper trading</button>
+          <button class="split-nav-item" type="button" data-split-target="analytics">Analyse</button>
           <button class="split-nav-item" type="button" data-split-target="agents">Agent arena</button>
         </nav>
 
@@ -92,12 +93,44 @@
             <canvas id="portfolioChart" width="720" height="260" aria-label="Porteføljeutvikling"></canvas>
           </article>
 
+          <article class="panel floor-window comparison-window" data-split-view="analytics">
+            <div class="window-bar">
+              <div>
+                <p class="eyebrow">Sammenligning</p>
+                <h3>Portefølje mot børs</h3>
+              </div>
+              <div class="chart-controls" aria-label="Velg graf">
+                <button class="chart-mode-button" type="button" data-chart-mode="portfolio">Portefølje</button>
+                <button class="chart-mode-button" type="button" data-chart-mode="market">Børs</button>
+                <button class="chart-mode-button active" type="button" data-chart-mode="both" aria-pressed="true">Begge</button>
+              </div>
+            </div>
+            <canvas id="comparisonChart" width="900" height="280" aria-label="Sammenligning av portefølje og børs"></canvas>
+            <div class="chart-legend">
+              <span><i class="legend-dot portfolio-dot"></i>Portefølje</span>
+              <span><i class="legend-dot market-dot"></i>Børs</span>
+            </div>
+          </article>
+
+          <article class="panel floor-window risk-window" data-split-view="analytics">
+            <div class="window-bar">
+              <div>
+                <p class="eyebrow">Risiko</p>
+                <h3>Risikotall</h3>
+              </div>
+            </div>
+            <div class="risk-grid" id="riskMetrics"></div>
+          </article>
+
           <article class="panel floor-window market-window" data-split-view="market">
             <div class="window-bar">
               <div>
                 <p class="eyebrow">Marked</p>
                 <h3>Overvåkningsliste</h3>
               </div>
+            </div>
+            <div class="market-chart-wrap">
+              <canvas id="marketChart" width="720" height="180" aria-label="Børsutvikling"></canvas>
             </div>
             <div class="table-wrap">
               <table>
@@ -113,6 +146,19 @@
                 <tbody id="marketRows"></tbody>
               </table>
             </div>
+          </article>
+
+          <article class="panel floor-window ticker-window" data-split-view="market">
+            <div class="window-bar">
+              <div>
+                <p class="eyebrow">Aktiv ticker</p>
+                <h3 id="activeTickerTitle">AAPL</h3>
+              </div>
+              <span class="window-tag" id="activeTickerSignal">Hold</span>
+            </div>
+            <canvas id="tickerChart" width="720" height="220" aria-label="Tickerutvikling"></canvas>
+            <div class="ticker-details" id="tickerDetails"></div>
+            <div class="agent-ticker-views" id="agentTickerViews"></div>
           </article>
 
           <article class="panel floor-window order-window" data-split-view="trade">
@@ -208,6 +254,16 @@
               </div>
             </div>
             <div id="agentLog" class="agent-log"></div>
+          </article>
+
+          <article class="panel floor-window agent-info-window" data-split-view="agents">
+            <div class="window-bar">
+              <div>
+                <p class="eyebrow">Strategier</p>
+                <h3>Hva agentene gjør</h3>
+              </div>
+            </div>
+            <div class="strategy-list" id="agentStrategies"></div>
           </article>
         </section>
       </main>

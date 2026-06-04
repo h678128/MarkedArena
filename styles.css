@@ -275,6 +275,11 @@ body.split-mode .split-nav {
   min-height: 342px;
 }
 
+.standard-layout .ticker-window {
+  grid-column: span 5;
+  min-height: 360px;
+}
+
 .standard-layout .order-window {
   grid-column: span 3;
   min-height: 342px;
@@ -295,6 +300,17 @@ body.split-mode .split-nav {
   min-height: 286px;
 }
 
+.standard-layout .comparison-window {
+  grid-column: span 6;
+  min-height: 360px;
+}
+
+.standard-layout .risk-window,
+.standard-layout .agent-info-window {
+  grid-column: span 3;
+  min-height: 360px;
+}
+
 .split-layout .stat-panel,
 .split-layout .floor-window {
   grid-column: auto;
@@ -302,13 +318,17 @@ body.split-mode .split-nav {
 
 .split-layout .chart-window,
 .split-layout .market-window,
-.split-layout .agents-window {
+.split-layout .ticker-window,
+.split-layout .agents-window,
+.split-layout .comparison-window {
   min-height: 360px;
 }
 
 .split-layout .chart-window.active-split-panel,
 .split-layout .market-window.active-split-panel,
-.split-layout .agents-window.active-split-panel {
+.split-layout .ticker-window.active-split-panel,
+.split-layout .agents-window.active-split-panel,
+.split-layout .comparison-window.active-split-panel {
   grid-column: 1 / -1;
 }
 
@@ -331,6 +351,31 @@ body.split-mode .split-nav {
 
 .window-bar h3 {
   font-size: 1rem;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.chart-mode-button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  padding: 0 9px;
+}
+
+.chart-mode-button.active {
+  background: var(--ink);
+  color: #fff;
 }
 
 .window-tag,
@@ -363,6 +408,91 @@ canvas {
   width: 100%;
   height: 100%;
   min-height: 280px;
+}
+
+.comparison-window canvas {
+  min-height: 280px;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px 12px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 999px;
+}
+
+.portfolio-dot {
+  background: var(--teal);
+}
+
+.market-dot {
+  background: var(--blue);
+}
+
+.market-chart-wrap {
+  min-height: 172px;
+  border-bottom: 1px solid var(--line);
+  background: #f3f7f6;
+}
+
+.market-chart-wrap canvas {
+  height: 172px;
+  min-height: 172px;
+}
+
+.ticker-window canvas {
+  min-height: 210px;
+}
+
+.ticker-details,
+.agent-ticker-views {
+  display: grid;
+  gap: 9px;
+  padding: 12px 14px;
+}
+
+.ticker-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.ticker-details div,
+.agent-view-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.ticker-details span,
+.agent-view-row span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.ticker-details strong,
+.agent-view-row strong {
+  font-size: 0.9rem;
+}
+
+.agent-ticker-views {
+  padding-top: 0;
 }
 
 .table-wrap {
@@ -402,6 +532,20 @@ td {
 
 tr:last-child td {
   border-bottom: 0;
+}
+
+#marketRows tr {
+  cursor: pointer;
+}
+
+#marketRows tr:hover,
+#marketRows tr.active-row {
+  background: #edf4f6;
+}
+
+#marketRows tr.active-row .ticker-badge {
+  background: var(--ink);
+  color: #fff;
 }
 
 .ticker-cell {
@@ -478,6 +622,51 @@ tr:last-child td {
 
 .order-preview p {
   margin: 2px 0 0;
+}
+
+.risk-grid,
+.strategy-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  overflow: auto;
+}
+
+.risk-card,
+.strategy-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.risk-card h4,
+.strategy-card h4 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.risk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.risk-row strong {
+  color: var(--ink);
+}
+
+.strategy-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.87rem;
+  line-height: 1.45;
 }
 
 label {
@@ -618,10 +807,14 @@ select {
   .standard-layout .stat-panel,
   .standard-layout .chart-window,
   .standard-layout .market-window,
+  .standard-layout .ticker-window,
   .standard-layout .order-window,
   .standard-layout .holdings-window,
   .standard-layout .agents-window,
-  .standard-layout .log-window {
+  .standard-layout .log-window,
+  .standard-layout .comparison-window,
+  .standard-layout .risk-window,
+  .standard-layout .agent-info-window {
     grid-column: auto;
   }
 

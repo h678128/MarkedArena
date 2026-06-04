@@ -2,6 +2,8 @@ const STARTING_CASH = 100000;
 const STORAGE_KEY = "markedarena-state-v1";
 const LAYOUT_KEY = "markedarena-layout-v1";
 const SPLIT_VIEW_KEY = "markedarena-split-view-v1";
+const CHART_MODE_KEY = "markedarena-chart-mode-v1";
+const ACTIVE_TICKER_KEY = "markedarena-active-ticker-v1";
 const SLIPPAGE_RATE = 0.001;
 const FEE_RATE = 0.001;
 
@@ -132,6 +134,8 @@ let feedPaused = false;
 let tickCount = 0;
 let currentLayout = "standard";
 let currentSplitView = localStorage.getItem(SPLIT_VIEW_KEY) || "dashboard";
+let currentChartMode = localStorage.getItem(CHART_MODE_KEY) || "both";
+let activeTicker = localStorage.getItem(ACTIVE_TICKER_KEY) || "AAPL";
 
 const standardHeader = {
   eyebrow: "Alt-i-ett arbeidsflate",
@@ -155,12 +159,44 @@ const splitViews = {
     title: "Paper trading",
     summary: "Ordrepanel og posisjoner samlet for simulert handel.",
   },
+  analytics: {
+    eyebrow: "Split-visning",
+    title: "Analyse",
+    summary: "Sammenlign porteføljen mot børsen og følg risiko over tid.",
+  },
   agents: {
     eyebrow: "Split-visning",
     title: "Agent arena",
     summary: "Leaderboard og beslutningslogg for strategiagentene.",
   },
 };
+
+const agentStrategyNotes = [
+  {
+    id: "momentum",
+    name: "Momentum Llama",
+    summary: "Jakter aksjen med sterkest historisk momentum i den simulerte feeden.",
+    detail: "Strategien antar at sterke bevegelser kan fortsette litt til. Den rebalanserer mot vinneren, men kan bli sårbar når trenden snur brått.",
+  },
+  {
+    id: "value",
+    name: "Value GPT",
+    summary: "Prioriterer høy valueScore og trekker ned aksjer som allerede har løpt mye.",
+    detail: "Strategien prøver å finne rimeligere kvalitetskandidater. Den kan ligge bak i sterke momentumperioder, men søker mer defensiv inngang.",
+  },
+  {
+    id: "sentiment",
+    name: "Sentiment Claude",
+    summary: "Kombinerer sentiment-score med kortsiktig dagsendring.",
+    detail: "Strategien følger aksjer der stemning og prisbevegelse peker samme vei. Den er mer følsom for raske skift i nyhetsfølelse.",
+  },
+  {
+    id: "benchmark",
+    name: "Market Basket",
+    summary: "Equal-weight kurv av de største tickere i arenaen.",
+    detail: "Dette er referansen for selve børsen i MVP-en. Den handler ikke taktisk, men viser hvordan en bred kurv utvikler seg.",
+  },
+];
 
 const formatMoney = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -259,8 +295,14 @@ function render() {
   renderHoldings();
   renderAgents();
   renderLog();
+  renderRiskMetrics();
+  renderAgentStrategies();
+  renderTickerDetails();
   updateOrderPreview();
   drawPortfolioChart();
+  drawMarketChart();
+  drawComparisonChart();
+  drawTickerChart();
   saveState();
 }
 
@@ -287,8 +329,9 @@ function renderMarket() {
     .map((stock) => {
       const change = stockDayChange(stock);
       const direction = change >= 0 ? "positive" : "negative";
+      const isActive = stock.ticker === activeTicker;
       return `
-        <tr>
+        <tr class="${isActive ? "active-row" : ""}" data-ticker="${stock.ticker}" tabindex="0" aria-label="Velg ${stock.ticker}">
           <td>
             <div class="ticker-cell">
               <span class="ticker-badge">${stock.ticker}</span>
@@ -309,11 +352,15 @@ function renderMarket() {
 
 function renderTradeControls() {
   const select = document.querySelector("#tickerSelect");
-  if (select.options.length === state.market.length) return;
+  if (select.options.length === state.market.length) {
+    select.value = activeTicker;
+    return;
+  }
 
   select.innerHTML = state.market
     .map((stock) => `<option value="${stock.ticker}">${stock.ticker} - ${stock.name}</option>`)
     .join("");
+  select.value = activeTicker;
 }
 
 function renderHoldings() {
@@ -369,8 +416,139 @@ function renderLog() {
     .join("");
 }
 
-function drawPortfolioChart() {
-  const canvas = document.querySelector("#portfolioChart");
+function portfolioHistoryWithCurrent() {
+  return state.portfolioHistory.length > 1 ? [...state.portfolioHistory, portfolioValue()] : [STARTING_CASH, portfolioValue()];
+}
+
+function marketHistoryWithCurrent() {
+  const benchmark = state.agents.find((agent) => agent.id === "benchmark");
+  const currentValue = portfolioValue(benchmark);
+  return benchmark.history.length > 1 ? [...benchmark.history, currentValue] : [STARTING_CASH, currentValue];
+}
+
+function returnsFor(history) {
+  const returns = [];
+  for (let i = 1; i < history.length; i += 1) {
+    const previous = history[i - 1];
+    if (previous > 0) {
+      returns.push(((history[i] - previous) / previous) * 100);
+    }
+  }
+  return returns;
+}
+
+function riskStats(history) {
+  const returns = returnsFor(history);
+  const totalReturn = ((history.at(-1) - history[0]) / history[0]) * 100;
+  const average = returns.reduce((sum, value) => sum + value, 0) / Math.max(1, returns.length);
+  const variance = returns.reduce((sum, value) => sum + (value - average) ** 2, 0) / Math.max(1, returns.length);
+  let peak = history[0];
+  let maxDrawdown = 0;
+
+  history.forEach((value) => {
+    peak = Math.max(peak, value);
+    maxDrawdown = Math.min(maxDrawdown, ((value - peak) / peak) * 100);
+  });
+
+  return {
+    totalReturn,
+    volatility: Math.sqrt(variance),
+    maxDrawdown,
+    bestTick: returns.length ? Math.max(...returns) : 0,
+    worstTick: returns.length ? Math.min(...returns) : 0,
+  };
+}
+
+function renderRiskMetrics() {
+  const metrics = [
+    { label: "Portefølje", stats: riskStats(portfolioHistoryWithCurrent()) },
+    { label: "Børs", stats: riskStats(marketHistoryWithCurrent()) },
+  ];
+
+  document.querySelector("#riskMetrics").innerHTML = metrics
+    .map(
+      ({ label, stats }) => `
+        <div class="risk-card">
+          <h4>${label}</h4>
+          <div class="risk-row"><span>Totalavkastning</span><strong class="${stats.totalReturn >= 0 ? "positive" : "negative"}">${formatPercent(stats.totalReturn)}</strong></div>
+          <div class="risk-row"><span>Volatilitet/tick</span><strong>${stats.volatility.toFixed(2)}%</strong></div>
+          <div class="risk-row"><span>Max drawdown</span><strong class="negative">${stats.maxDrawdown.toFixed(2)}%</strong></div>
+          <div class="risk-row"><span>Beste tick</span><strong class="positive">${formatPercent(stats.bestTick)}</strong></div>
+          <div class="risk-row"><span>Verste tick</span><strong class="negative">${formatPercent(stats.worstTick)}</strong></div>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function renderAgentStrategies() {
+  document.querySelector("#agentStrategies").innerHTML = agentStrategyNotes
+    .map(
+      (agent) => `
+        <div class="strategy-card">
+          <h4>${agent.name}</h4>
+          <p><strong>${agent.summary}</strong></p>
+          <p>${agent.detail}</p>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function agentTickerView(agentId, stock) {
+  const picks = {
+    momentum: bestBy(stockMomentum)?.ticker,
+    value: bestBy((candidate) => candidate.valueScore - Math.max(0, stockMomentum(candidate) / 2))?.ticker,
+    sentiment: bestBy((candidate) => candidate.sentiment + stockDayChange(candidate))?.ticker,
+  };
+
+  if (agentId === "benchmark") {
+    return state.agents.find((agent) => agent.id === "benchmark")?.holdings[stock.ticker] ? "I kurven" : "Utenfor kurv";
+  }
+
+  return picks[agentId] === stock.ticker ? "Favoritt nå" : "Overvåker";
+}
+
+function renderTickerDetails() {
+  const stock = stockByTicker(activeTicker) || state.market[0];
+  if (!stock) return;
+
+  activeTicker = stock.ticker;
+  const change = stockDayChange(stock);
+  const momentum = stockMomentum(stock);
+  const owned = state.holdings[stock.ticker] || 0;
+  const signal = signalFor(stock);
+  const select = document.querySelector("#tickerSelect");
+
+  if (select.value !== activeTicker) {
+    select.value = activeTicker;
+  }
+
+  document.querySelector("#activeTickerTitle").textContent = `${stock.ticker} · ${stock.name}`;
+  document.querySelector("#activeTickerSignal").textContent = signal;
+  document.querySelector("#tickerDetails").innerHTML = `
+    <div><span>Pris</span><strong>${formatPrice(stock.price)}</strong></div>
+    <div><span>Dag</span><strong class="${change >= 0 ? "positive" : "negative"}">${formatPercent(change)}</strong></div>
+    <div><span>Momentum</span><strong class="${momentum >= 0 ? "positive" : "negative"}">${formatPercent(momentum)}</strong></div>
+    <div><span>Signal</span><strong>${signal}</strong></div>
+    <div><span>Value score</span><strong>${stock.valueScore}</strong></div>
+    <div><span>Sentiment</span><strong>${stock.sentiment.toFixed(0)}</strong></div>
+    <div><span>Din beholdning</span><strong>${owned.toFixed(2)} aksjer</strong></div>
+    <div><span>Markedsverdi</span><strong>${formatMoney(owned * stock.price)}</strong></div>
+  `;
+  document.querySelector("#agentTickerViews").innerHTML = agentStrategyNotes
+    .map(
+      (agent) => `
+        <div class="agent-view-row">
+          <span>${agent.name}</span>
+          <strong>${agentTickerView(agent.id, stock)}</strong>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function drawChart(canvas, series, label) {
   const context = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
@@ -380,10 +558,14 @@ function drawPortfolioChart() {
 
   const width = rect.width;
   const height = rect.height;
-  const padding = 18;
-  const history = state.portfolioHistory.length > 1 ? state.portfolioHistory : [STARTING_CASH, portfolioValue()];
-  const min = Math.min(...history) * 0.995;
-  const max = Math.max(...history) * 1.005;
+  const leftPadding = 18;
+  const rightPadding = 18;
+  const topPadding = 30;
+  const bottomPadding = 34;
+  const allValues = series.flatMap((item) => item.history);
+  const longestHistory = Math.max(...series.map((item) => item.history.length));
+  const min = Math.min(...allValues) * 0.995;
+  const max = Math.max(...allValues) * 1.005;
   const range = Math.max(1, max - min);
 
   context.clearRect(0, 0, width, height);
@@ -393,27 +575,96 @@ function drawPortfolioChart() {
   context.strokeStyle = "#d6dfda";
   context.lineWidth = 1;
   for (let i = 0; i < 4; i += 1) {
-    const y = padding + ((height - padding * 2) / 3) * i;
+    const y = topPadding + ((height - topPadding - bottomPadding) / 3) * i;
     context.beginPath();
-    context.moveTo(padding, y);
-    context.lineTo(width - padding, y);
+    context.moveTo(leftPadding, y);
+    context.lineTo(width - rightPadding, y);
     context.stroke();
   }
 
-  context.strokeStyle = "#0c6d73";
-  context.lineWidth = 3;
-  context.beginPath();
-  history.forEach((value, index) => {
-    const x = padding + ((width - padding * 2) * index) / Math.max(1, history.length - 1);
-    const y = height - padding - ((value - min) / range) * (height - padding * 2);
-    if (index === 0) context.moveTo(x, y);
-    else context.lineTo(x, y);
+  series.forEach((item) => {
+    context.strokeStyle = item.color;
+    context.lineWidth = 3;
+    context.beginPath();
+    item.history.forEach((value, index) => {
+      const x = leftPadding + ((width - leftPadding - rightPadding) * index) / Math.max(1, item.history.length - 1);
+      const y = height - bottomPadding - ((value - min) / range) * (height - topPadding - bottomPadding);
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    });
+    context.stroke();
   });
-  context.stroke();
+
+  const tickCount = Math.min(5, longestHistory);
+  context.fillStyle = "#64727a";
+  context.font = "700 11px system-ui";
+  context.textAlign = "center";
+  for (let i = 0; i < tickCount; i += 1) {
+    const ratio = tickCount === 1 ? 0 : i / (tickCount - 1);
+    const index = Math.round(ratio * (longestHistory - 1));
+    const x = leftPadding + (width - leftPadding - rightPadding) * ratio;
+    const labelText = index === longestHistory - 1 ? "Nå" : `T-${longestHistory - 1 - index}`;
+    context.fillText(labelText, x, height - 11);
+  }
 
   context.fillStyle = "#17211d";
   context.font = "700 13px system-ui";
-  context.fillText("Porteføljehistorikk", padding, 24);
+  context.textAlign = "left";
+  context.fillText(label, leftPadding, 22);
+}
+
+function drawLineChart(canvas, history, label, color) {
+  drawChart(canvas, [{ history, color }], label);
+}
+
+function drawPortfolioChart() {
+  const canvas = document.querySelector("#portfolioChart");
+  drawLineChart(canvas, portfolioHistoryWithCurrent(), "Porteføljehistorikk", "#0c6d73");
+}
+
+function drawMarketChart() {
+  const canvas = document.querySelector("#marketChart");
+  drawLineChart(canvas, marketHistoryWithCurrent(), "Børsutvikling", "#285ca8");
+}
+
+function drawComparisonChart() {
+  const canvas = document.querySelector("#comparisonChart");
+  const series = [];
+
+  if (currentChartMode === "portfolio" || currentChartMode === "both") {
+    series.push({ history: portfolioHistoryWithCurrent(), color: "#0c6d73" });
+  }
+
+  if (currentChartMode === "market" || currentChartMode === "both") {
+    series.push({ history: marketHistoryWithCurrent(), color: "#285ca8" });
+  }
+
+  drawChart(canvas, series, "Portefølje vs børs");
+}
+
+function drawTickerChart() {
+  const canvas = document.querySelector("#tickerChart");
+  const stock = stockByTicker(activeTicker) || state.market[0];
+  if (!stock) return;
+  drawLineChart(canvas, stock.history, `${stock.ticker} historikk`, "#95630f");
+}
+
+function setActiveTicker(ticker) {
+  const stock = stockByTicker(ticker);
+  if (!stock) return;
+
+  activeTicker = stock.ticker;
+  localStorage.setItem(ACTIVE_TICKER_KEY, activeTicker);
+
+  const select = document.querySelector("#tickerSelect");
+  if (select.value !== activeTicker) {
+    select.value = activeTicker;
+  }
+
+  renderMarket();
+  renderTickerDetails();
+  updateOrderPreview();
+  requestAnimationFrame(drawTickerChart);
 }
 
 function orderQuote(portfolio, ticker, side, quantity) {
@@ -633,6 +884,28 @@ function setSplitView(view) {
   if (currentSplitView === "dashboard") {
     requestAnimationFrame(drawPortfolioChart);
   }
+
+  if (currentSplitView === "market") {
+    requestAnimationFrame(drawMarketChart);
+    requestAnimationFrame(drawTickerChart);
+  }
+
+  if (currentSplitView === "analytics") {
+    requestAnimationFrame(drawComparisonChart);
+  }
+}
+
+function setComparisonChartMode(mode) {
+  currentChartMode = ["portfolio", "market", "both"].includes(mode) ? mode : "both";
+
+  document.querySelectorAll(".chart-mode-button").forEach((button) => {
+    const isActive = button.dataset.chartMode === currentChartMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  localStorage.setItem(CHART_MODE_KEY, currentChartMode);
+  requestAnimationFrame(drawComparisonChart);
 }
 
 function setLayout(layout) {
@@ -655,6 +928,9 @@ function setLayout(layout) {
   setSplitView(currentSplitView);
   updateWorkspaceHeader();
   requestAnimationFrame(drawPortfolioChart);
+  requestAnimationFrame(drawMarketChart);
+  requestAnimationFrame(drawComparisonChart);
+  requestAnimationFrame(drawTickerChart);
 }
 
 function bindLayoutControls() {
@@ -670,6 +946,13 @@ function bindLayoutControls() {
     });
   });
 
+  document.querySelectorAll(".chart-mode-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      setComparisonChartMode(button.dataset.chartMode);
+    });
+  });
+
+  setComparisonChartMode(currentChartMode);
   setLayout(localStorage.getItem(LAYOUT_KEY));
 }
 
@@ -679,13 +962,32 @@ document.querySelector("#tradeForm").addEventListener("submit", handleTrade);
   element.addEventListener("input", updateOrderPreview);
   element.addEventListener("change", updateOrderPreview);
 });
+document.querySelector("#tickerSelect").addEventListener("change", (event) => {
+  setActiveTicker(event.target.value);
+});
+document.querySelector("#marketRows").addEventListener("click", (event) => {
+  const row = event.target.closest("tr[data-ticker]");
+  if (row) setActiveTicker(row.dataset.ticker);
+});
+document.querySelector("#marketRows").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const row = event.target.closest("tr[data-ticker]");
+  if (!row) return;
+  event.preventDefault();
+  setActiveTicker(row.dataset.ticker);
+});
 document.querySelector("#runAgentsButton").addEventListener("click", runAgents);
 document.querySelector("#resetButton").addEventListener("click", resetArena);
 document.querySelector("#pauseFeedButton").addEventListener("click", () => {
   feedPaused = !feedPaused;
   render();
 });
-window.addEventListener("resize", drawPortfolioChart);
+window.addEventListener("resize", () => {
+  drawPortfolioChart();
+  drawMarketChart();
+  drawComparisonChart();
+  drawTickerChart();
+});
 
 bindLayoutControls();
 render();
