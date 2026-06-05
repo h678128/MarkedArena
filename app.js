@@ -119,6 +119,42 @@ const agentsTemplate = [
     history: [STARTING_CASH],
   },
   {
+    id: "contrarian",
+    name: "Dip Hunter",
+    style: "Contrarian",
+    cash: STARTING_CASH,
+    holdings: {},
+    lastAction: "Venter",
+    history: [STARTING_CASH],
+  },
+  {
+    id: "lowvol",
+    name: "Low Vol Sigma",
+    style: "Risk control",
+    cash: STARTING_CASH,
+    holdings: {},
+    lastAction: "Venter",
+    history: [STARTING_CASH],
+  },
+  {
+    id: "quality",
+    name: "Quality Quant",
+    style: "Quality",
+    cash: STARTING_CASH,
+    holdings: {},
+    lastAction: "Venter",
+    history: [STARTING_CASH],
+  },
+  {
+    id: "swing",
+    name: "Swing Radar",
+    style: "Swing",
+    cash: STARTING_CASH,
+    holdings: {},
+    lastAction: "Venter",
+    history: [STARTING_CASH],
+  },
+  {
     id: "benchmark",
     name: "Market Basket",
     style: "Benchmark",
@@ -191,6 +227,30 @@ const agentStrategyNotes = [
     detail: "Strategien følger aksjer der stemning og prisbevegelse peker samme vei. Den er mer følsom for raske skift i nyhetsfølelse.",
   },
   {
+    id: "contrarian",
+    name: "Dip Hunter",
+    summary: "Ser etter kvalitetsaksjer som har falt på kort sikt.",
+    detail: "Strategien prøver å kjøpe når markedet overreagerer nedover. Den favoriserer høy valueScore og svake dagsbevegelser, men unngår rene fallkniver ved å kreve litt kvalitet.",
+  },
+  {
+    id: "lowvol",
+    name: "Low Vol Sigma",
+    summary: "Prioriterer roligere aksjer med lav volatilitet og grei sentiment.",
+    detail: "Strategien forsøker å holde risikoen lavere enn de mer aggressive agentene. Den velger ofte jevnere tickere fremfor de største momentum-vinnerne.",
+  },
+  {
+    id: "quality",
+    name: "Quality Quant",
+    summary: "Leter etter balanse mellom valueScore, sentiment og stabil momentum.",
+    detail: "Strategien liker aksjer som ser solide ut på flere enkle signaler samtidig. Den straffer ekstreme prisbevegelser litt for å unngå å kjøpe for sent.",
+  },
+  {
+    id: "swing",
+    name: "Swing Radar",
+    summary: "Jakter kortsiktige setups der dagstrend og historisk momentum peker opp.",
+    detail: "Strategien er mer taktisk enn quality og low-vol. Den forsøker å fange korte bevegelser, men kan rotere oftere når signalene skifter.",
+  },
+  {
     id: "benchmark",
     name: "Market Basket",
     summary: "Equal-weight kurv av de største tickere i arenaen.",
@@ -219,12 +279,36 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function ensureBenchmarkHoldings(agent) {
+  if (Object.keys(agent.holdings || {}).length) return agent;
+
+  const basket = stocks.slice(0, 6);
+  const allocation = STARTING_CASH / basket.length;
+  agent.holdings = {};
+  basket.forEach((stock) => {
+    agent.holdings[stock.ticker] = allocation / stock.price;
+  });
+  return agent;
+}
+
+function mergeAgents(savedAgents = []) {
+  const savedById = new Map(savedAgents.map((agent) => [agent.id, agent]));
+  return agentsTemplate.map((template) => {
+    const merged = { ...clone(template), ...(savedById.get(template.id) || {}) };
+    if (merged.id === "benchmark") ensureBenchmarkHoldings(merged);
+    if (!Array.isArray(merged.history) || !merged.history.length) merged.history = [STARTING_CASH];
+    if (!merged.holdings) merged.holdings = {};
+    return merged;
+  });
+}
+
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
       if (parsed?.market?.length) {
+        parsed.agents = mergeAgents(parsed.agents);
         return parsed;
       }
     } catch {
@@ -234,11 +318,7 @@ function loadState() {
 
   const initialAgents = clone(agentsTemplate);
   const benchmark = initialAgents.find((agent) => agent.id === "benchmark");
-  const basket = stocks.slice(0, 6);
-  const allocation = STARTING_CASH / basket.length;
-  basket.forEach((stock) => {
-    benchmark.holdings[stock.ticker] = allocation / stock.price;
-  });
+  ensureBenchmarkHoldings(benchmark);
 
   return {
     cash: STARTING_CASH,
@@ -496,17 +576,14 @@ function renderAgentStrategies() {
 }
 
 function agentTickerView(agentId, stock) {
-  const picks = {
-    momentum: bestBy(stockMomentum)?.ticker,
-    value: bestBy((candidate) => candidate.valueScore - Math.max(0, stockMomentum(candidate) / 2))?.ticker,
-    sentiment: bestBy((candidate) => candidate.sentiment + stockDayChange(candidate))?.ticker,
-  };
-
   if (agentId === "benchmark") {
     return state.agents.find((agent) => agent.id === "benchmark")?.holdings[stock.ticker] ? "I kurven" : "Utenfor kurv";
   }
 
-  return picks[agentId] === stock.ticker ? "Favoritt nå" : "Overvåker";
+  const agent = state.agents.find((candidate) => candidate.id === agentId);
+  const target = agent ? targetForAgent(agent) : null;
+  const score = agentScore(agentId, stock);
+  return target?.ticker === stock.ticker ? `Favoritt (${score.toFixed(1)})` : `Score ${score.toFixed(1)}`;
 }
 
 function renderTickerDetails() {
@@ -801,6 +878,41 @@ function bestBy(metric) {
   return [...state.market].sort((a, b) => metric(b) - metric(a))[0];
 }
 
+function agentScore(agentId, stock) {
+  const momentum = stockMomentum(stock);
+  const dayChange = stockDayChange(stock);
+
+  const scores = {
+    momentum: momentum * 1.4 + stock.sentiment * 0.25,
+    value: stock.valueScore - Math.max(0, momentum / 2),
+    sentiment: stock.sentiment + dayChange,
+    contrarian: stock.valueScore * 0.9 - dayChange * 8 - Math.max(0, momentum) * 0.2,
+    lowvol: stock.valueScore * 0.35 + stock.sentiment * 0.35 - stock.volatility * 1800,
+    quality: stock.valueScore * 0.65 + stock.sentiment * 0.45 - Math.abs(momentum) * 0.25,
+    swing: dayChange * 2.2 + momentum * 0.75 + stock.sentiment * 0.18,
+  };
+
+  return scores[agentId] ?? 0;
+}
+
+function targetForAgent(agent) {
+  return bestBy((stock) => agentScore(agent.id, stock));
+}
+
+function allocationForAgent(agentId) {
+  const allocations = {
+    momentum: 0.2,
+    value: 0.18,
+    sentiment: 0.18,
+    contrarian: 0.16,
+    lowvol: 0.14,
+    quality: 0.17,
+    swing: 0.2,
+  };
+
+  return allocations[agentId] ?? 0.18;
+}
+
 function rebalanceAgent(agent, targetStock, allocation = 0.18) {
   const value = portfolioValue(agent);
   const currentValue = (agent.holdings[targetStock.ticker] || 0) * targetStock.price;
@@ -827,18 +939,8 @@ function runAgents() {
       return;
     }
 
-    let target;
-    if (agent.id === "momentum") {
-      target = bestBy(stockMomentum);
-    }
-    if (agent.id === "value") {
-      target = bestBy((stock) => stock.valueScore - Math.max(0, stockMomentum(stock) / 2));
-    }
-    if (agent.id === "sentiment") {
-      target = bestBy((stock) => stock.sentiment + stockDayChange(stock));
-    }
-
-    const log = rebalanceAgent(agent, target);
+    const target = targetForAgent(agent);
+    const log = rebalanceAgent(agent, target, allocationForAgent(agent.id));
     state.log.push(log);
     agent.history.push(portfolioValue(agent));
   });
