@@ -88,6 +88,156 @@ const stocks = [
     sentiment: 60,
     history: [512, 514, 516, 518, 519, 522, 523.19],
   },
+  {
+    ticker: "GOOGL",
+    name: "Alphabet",
+    price: 174.63,
+    drift: 0.0006,
+    volatility: 0.014,
+    valueScore: 69,
+    sentiment: 63,
+    history: [166, 168, 171, 170, 173, 174, 174.63],
+  },
+  {
+    ticker: "AMZN",
+    name: "Amazon",
+    price: 186.51,
+    drift: 0.0007,
+    volatility: 0.016,
+    valueScore: 58,
+    sentiment: 66,
+    history: [176, 179, 181, 180, 184, 185, 186.51],
+  },
+  {
+    ticker: "META",
+    name: "Meta Platforms",
+    price: 472.22,
+    drift: 0.0009,
+    volatility: 0.018,
+    valueScore: 62,
+    sentiment: 70,
+    history: [445, 452, 459, 455, 466, 470, 472.22],
+  },
+  {
+    ticker: "AMD",
+    name: "AMD",
+    price: 158.34,
+    drift: 0.0008,
+    volatility: 0.023,
+    valueScore: 51,
+    sentiment: 61,
+    history: [148, 151, 155, 152, 157, 156, 158.34],
+  },
+  {
+    ticker: "AVGO",
+    name: "Broadcom",
+    price: 1348.8,
+    drift: 0.00075,
+    volatility: 0.018,
+    valueScore: 57,
+    sentiment: 68,
+    history: [1275, 1298, 1320, 1311, 1335, 1342, 1348.8],
+  },
+  {
+    ticker: "V",
+    name: "Visa",
+    price: 276.42,
+    drift: 0.00035,
+    volatility: 0.008,
+    valueScore: 74,
+    sentiment: 57,
+    history: [269, 270, 272, 273, 274, 276, 276.42],
+  },
+  {
+    ticker: "MA",
+    name: "Mastercard",
+    price: 456.39,
+    drift: 0.00038,
+    volatility: 0.009,
+    valueScore: 71,
+    sentiment: 58,
+    history: [444, 446, 449, 451, 452, 455, 456.39],
+  },
+  {
+    ticker: "WMT",
+    name: "Walmart",
+    price: 67.91,
+    drift: 0.00025,
+    volatility: 0.007,
+    valueScore: 78,
+    sentiment: 53,
+    history: [65, 66, 66.4, 66.9, 67.2, 67.5, 67.91],
+  },
+  {
+    ticker: "COST",
+    name: "Costco",
+    price: 812.44,
+    drift: 0.00032,
+    volatility: 0.01,
+    valueScore: 65,
+    sentiment: 62,
+    history: [782, 790, 799, 795, 806, 810, 812.44],
+  },
+  {
+    ticker: "KO",
+    name: "Coca-Cola",
+    price: 62.35,
+    drift: 0.00015,
+    volatility: 0.006,
+    valueScore: 73,
+    sentiment: 50,
+    history: [61, 61.2, 61.6, 61.8, 62, 62.1, 62.35],
+  },
+  {
+    ticker: "DIS",
+    name: "Disney",
+    price: 102.74,
+    drift: 0.0002,
+    volatility: 0.015,
+    valueScore: 56,
+    sentiment: 49,
+    history: [108, 106, 104, 101, 103, 102, 102.74],
+  },
+  {
+    ticker: "BA",
+    name: "Boeing",
+    price: 181.9,
+    drift: 0.00015,
+    volatility: 0.02,
+    valueScore: 44,
+    sentiment: 42,
+    history: [194, 190, 187, 182, 179, 180, 181.9],
+  },
+  {
+    ticker: "CAT",
+    name: "Caterpillar",
+    price: 329.18,
+    drift: 0.0003,
+    volatility: 0.012,
+    valueScore: 77,
+    sentiment: 55,
+    history: [315, 319, 322, 324, 326, 328, 329.18],
+  },
+  {
+    ticker: "NEE",
+    name: "NextEra Energy",
+    price: 73.28,
+    drift: 0.00018,
+    volatility: 0.011,
+    valueScore: 70,
+    sentiment: 47,
+    history: [70, 71, 71.8, 72.1, 72.7, 73, 73.28],
+  },
+  {
+    ticker: "CVX",
+    name: "Chevron",
+    price: 159.77,
+    drift: 0.00022,
+    volatility: 0.012,
+    valueScore: 79,
+    sentiment: 48,
+    history: [153, 155, 156, 157, 158, 159, 159.77],
+  },
 ];
 
 const agentsTemplate = [
@@ -279,10 +429,15 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function mergeMarket(savedMarket = []) {
+  const savedByTicker = new Map(savedMarket.map((stock) => [stock.ticker, stock]));
+  return stocks.map((stock) => ({ ...clone(stock), ...(savedByTicker.get(stock.ticker) || {}) }));
+}
+
 function ensureBenchmarkHoldings(agent) {
   if (Object.keys(agent.holdings || {}).length) return agent;
 
-  const basket = stocks.slice(0, 6);
+  const basket = stocks.slice(0, 12);
   const allocation = STARTING_CASH / basket.length;
   agent.holdings = {};
   basket.forEach((stock) => {
@@ -308,6 +463,7 @@ function loadState() {
     try {
       const parsed = JSON.parse(saved);
       if (parsed?.market?.length) {
+        parsed.market = mergeMarket(parsed.market);
         parsed.agents = mergeAgents(parsed.agents);
         return parsed;
       }
