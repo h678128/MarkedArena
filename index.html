@@ -129,6 +129,7 @@
                 <h3>Overvåkningsliste</h3>
               </div>
             </div>
+            <div class="watchlist-strip" id="watchlistStrip" aria-label="Mine tickere"></div>
             <div class="market-chart-wrap">
               <canvas id="marketChart" width="720" height="180" aria-label="Børsutvikling"></canvas>
             </div>
@@ -154,7 +155,10 @@
                 <p class="eyebrow">Aktiv ticker</p>
                 <h3 id="activeTickerTitle">AAPL</h3>
               </div>
-              <span class="window-tag" id="activeTickerSignal">Hold</span>
+              <div class="ticker-actions">
+                <button class="icon-button watchlist-toggle" id="activeWatchlistButton" type="button" aria-label="Legg til i watchlist AAPL" aria-pressed="false" title="Legg til i watchlist">☆</button>
+                <span class="window-tag" id="activeTickerSignal">Hold</span>
+              </div>
             </div>
             <canvas id="tickerChart" width="720" height="220" aria-label="Tickerutvikling"></canvas>
             <div class="ticker-details" id="tickerDetails"></div>

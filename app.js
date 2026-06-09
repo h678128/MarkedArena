@@ -4,6 +4,7 @@ const LAYOUT_KEY = "markedarena-layout-v1";
 const SPLIT_VIEW_KEY = "markedarena-split-view-v1";
 const CHART_MODE_KEY = "markedarena-chart-mode-v1";
 const ACTIVE_TICKER_KEY = "markedarena-active-ticker-v1";
+const WATCHLIST_KEY = "markedarena-watchlist-v1";
 const SLIPPAGE_RATE = 0.001;
 const FEE_RATE = 0.001;
 
@@ -322,6 +323,7 @@ let currentLayout = "standard";
 let currentSplitView = localStorage.getItem(SPLIT_VIEW_KEY) || "dashboard";
 let currentChartMode = localStorage.getItem(CHART_MODE_KEY) || "both";
 let activeTicker = localStorage.getItem(ACTIVE_TICKER_KEY) || "AAPL";
+let watchlist = loadWatchlist();
 
 const standardHeader = {
   eyebrow: "Alt-i-ett arbeidsflate",
@@ -490,8 +492,40 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function loadWatchlist() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "[]");
+    const validTickers = new Set(stocks.map((stock) => stock.ticker));
+    return Array.isArray(parsed) ? parsed.filter((ticker) => validTickers.has(ticker)) : [];
+  } catch {
+    localStorage.removeItem(WATCHLIST_KEY);
+    return [];
+  }
+}
+
+function saveWatchlist() {
+  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
+}
+
 function stockByTicker(ticker) {
   return state.market.find((stock) => stock.ticker === ticker);
+}
+
+function isWatchlisted(ticker) {
+  return watchlist.includes(ticker);
+}
+
+function marketForDisplay() {
+  return [...state.market].sort((a, b) => {
+    const watchDelta = Number(isWatchlisted(b.ticker)) - Number(isWatchlisted(a.ticker));
+    if (watchDelta) return watchDelta;
+
+    const aWatchIndex = watchlist.indexOf(a.ticker);
+    const bWatchIndex = watchlist.indexOf(b.ticker);
+    if (aWatchIndex >= 0 && bWatchIndex >= 0) return aWatchIndex - bWatchIndex;
+
+    return state.market.indexOf(a) - state.market.indexOf(b);
+  });
 }
 
 function positionValue(holdings) {
@@ -561,15 +595,24 @@ function renderStats() {
 }
 
 function renderMarket() {
-  const rows = state.market
+  const rows = marketForDisplay()
     .map((stock) => {
       const change = stockDayChange(stock);
       const direction = change >= 0 ? "positive" : "negative";
       const isActive = stock.ticker === activeTicker;
+      const watched = isWatchlisted(stock.ticker);
       return `
         <tr class="${isActive ? "active-row" : ""}" data-ticker="${stock.ticker}" tabindex="0" aria-label="Velg ${stock.ticker}">
           <td>
             <div class="ticker-cell">
+              <button
+                class="watchlist-toggle ${watched ? "active" : ""}"
+                type="button"
+                data-watchlist-toggle="${stock.ticker}"
+                aria-label="${watched ? "Fjern fra watchlist" : "Legg til i watchlist"} ${stock.ticker}"
+                aria-pressed="${watched}"
+                title="${watched ? "Fjern fra watchlist" : "Legg til i watchlist"}"
+              >${watched ? "★" : "☆"}</button>
               <span class="ticker-badge">${stock.ticker}</span>
             </div>
           </td>
@@ -584,6 +627,31 @@ function renderMarket() {
 
   document.querySelector("#marketRows").innerHTML = rows;
   document.querySelector("#feedStatus").textContent = feedPaused ? "Feed pauset" : "Feed aktiv";
+  renderWatchlistStrip();
+}
+
+function renderWatchlistStrip() {
+  const strip = document.querySelector("#watchlistStrip");
+  if (!strip) return;
+
+  if (!watchlist.length) {
+    strip.innerHTML = `<span class="muted">Ingen favoritter ennå.</span>`;
+    return;
+  }
+
+  strip.innerHTML = watchlist
+    .map((ticker) => {
+      const stock = stockByTicker(ticker);
+      if (!stock) return "";
+      const change = stockDayChange(stock);
+      return `
+        <button class="watchlist-chip ${ticker === activeTicker ? "active" : ""}" type="button" data-watchlist-ticker="${ticker}">
+          <strong>${ticker}</strong>
+          <span class="${change >= 0 ? "positive" : "negative"}">${formatPercent(change)}</span>
+        </button>
+      `;
+    })
+    .join("");
 }
 
 function renderTradeControls() {
@@ -759,6 +827,18 @@ function renderTickerDetails() {
 
   document.querySelector("#activeTickerTitle").textContent = `${stock.ticker} · ${stock.name}`;
   document.querySelector("#activeTickerSignal").textContent = signal;
+  const activeWatchlistButton = document.querySelector("#activeWatchlistButton");
+  if (activeWatchlistButton) {
+    const watched = isWatchlisted(stock.ticker);
+    activeWatchlistButton.textContent = watched ? "★" : "☆";
+    activeWatchlistButton.classList.toggle("active", watched);
+    activeWatchlistButton.setAttribute("aria-pressed", String(watched));
+    activeWatchlistButton.setAttribute(
+      "aria-label",
+      `${watched ? "Fjern fra watchlist" : "Legg til i watchlist"} ${stock.ticker}`,
+    );
+    activeWatchlistButton.title = watched ? "Fjern fra watchlist" : "Legg til i watchlist";
+  }
   document.querySelector("#tickerDetails").innerHTML = `
     <div><span>Pris</span><strong>${formatPrice(stock.price)}</strong></div>
     <div><span>Dag</span><strong class="${change >= 0 ? "positive" : "negative"}">${formatPercent(change)}</strong></div>
@@ -898,6 +978,18 @@ function setActiveTicker(ticker) {
   renderTickerDetails();
   updateOrderPreview();
   requestAnimationFrame(drawTickerChart);
+}
+
+function toggleWatchlist(ticker) {
+  if (!stockByTicker(ticker)) return;
+
+  watchlist = isWatchlisted(ticker)
+    ? watchlist.filter((currentTicker) => currentTicker !== ticker)
+    : [...watchlist, ticker];
+  saveWatchlist();
+  renderMarket();
+  renderTradeControls();
+  renderTickerDetails();
 }
 
 function orderQuote(portfolio, ticker, side, quantity) {
@@ -1224,15 +1316,29 @@ document.querySelector("#tickerSelect").addEventListener("change", (event) => {
   setActiveTicker(event.target.value);
 });
 document.querySelector("#marketRows").addEventListener("click", (event) => {
+  const watchlistButton = event.target.closest("[data-watchlist-toggle]");
+  if (watchlistButton) {
+    toggleWatchlist(watchlistButton.dataset.watchlistToggle);
+    return;
+  }
+
   const row = event.target.closest("tr[data-ticker]");
   if (row) setActiveTicker(row.dataset.ticker);
 });
 document.querySelector("#marketRows").addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
+  if (event.target.closest("[data-watchlist-toggle]")) return;
   const row = event.target.closest("tr[data-ticker]");
   if (!row) return;
   event.preventDefault();
   setActiveTicker(row.dataset.ticker);
+});
+document.querySelector("#watchlistStrip").addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-watchlist-ticker]");
+  if (chip) setActiveTicker(chip.dataset.watchlistTicker);
+});
+document.querySelector("#activeWatchlistButton").addEventListener("click", () => {
+  toggleWatchlist(activeTicker);
 });
 document.querySelector("#runAgentsButton").addEventListener("click", runAgents);
 document.querySelector("#resetButton").addEventListener("click", resetArena);
