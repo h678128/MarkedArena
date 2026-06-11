@@ -5,8 +5,12 @@ const SPLIT_VIEW_KEY = "markedarena-split-view-v1";
 const CHART_MODE_KEY = "markedarena-chart-mode-v1";
 const ACTIVE_TICKER_KEY = "markedarena-active-ticker-v1";
 const WATCHLIST_KEY = "markedarena-watchlist-v1";
+const MARKET_FILTER_KEY = "markedarena-market-filter-v1";
+const MARKET_SORT_KEY = "markedarena-market-sort-v1";
 const SLIPPAGE_RATE = 0.001;
 const FEE_RATE = 0.001;
+const MARKET_FILTERS = new Set(["all", "watchlist", "Momentum", "Value", "Dip", "Hold"]);
+const MARKET_SORTS = new Set(["watchlist", "day", "price", "ticker"]);
 
 const stocks = [
   {
@@ -324,6 +328,13 @@ let currentSplitView = localStorage.getItem(SPLIT_VIEW_KEY) || "dashboard";
 let currentChartMode = localStorage.getItem(CHART_MODE_KEY) || "both";
 let activeTicker = localStorage.getItem(ACTIVE_TICKER_KEY) || "AAPL";
 let watchlist = loadWatchlist();
+let marketSearch = "";
+let marketFilter = MARKET_FILTERS.has(localStorage.getItem(MARKET_FILTER_KEY))
+  ? localStorage.getItem(MARKET_FILTER_KEY)
+  : "all";
+let marketSort = MARKET_SORTS.has(localStorage.getItem(MARKET_SORT_KEY))
+  ? localStorage.getItem(MARKET_SORT_KEY)
+  : "watchlist";
 
 const standardHeader = {
   eyebrow: "Alt-i-ett arbeidsflate",
@@ -515,17 +526,34 @@ function isWatchlisted(ticker) {
   return watchlist.includes(ticker);
 }
 
+function matchesMarketFilter(stock) {
+  if (marketFilter === "watchlist") return isWatchlisted(stock.ticker);
+  if (marketFilter === "all") return true;
+  return signalFor(stock) === marketFilter;
+}
+
 function marketForDisplay() {
-  return [...state.market].sort((a, b) => {
-    const watchDelta = Number(isWatchlisted(b.ticker)) - Number(isWatchlisted(a.ticker));
-    if (watchDelta) return watchDelta;
+  const query = marketSearch.trim().toLowerCase();
+  return state.market
+    .filter((stock) => {
+      const matchesSearch =
+        !query || stock.ticker.toLowerCase().includes(query) || stock.name.toLowerCase().includes(query);
+      return matchesSearch && matchesMarketFilter(stock);
+    })
+    .sort((a, b) => {
+      if (marketSort === "day") return stockDayChange(b) - stockDayChange(a);
+      if (marketSort === "price") return b.price - a.price;
+      if (marketSort === "ticker") return a.ticker.localeCompare(b.ticker);
 
-    const aWatchIndex = watchlist.indexOf(a.ticker);
-    const bWatchIndex = watchlist.indexOf(b.ticker);
-    if (aWatchIndex >= 0 && bWatchIndex >= 0) return aWatchIndex - bWatchIndex;
+      const watchDelta = Number(isWatchlisted(b.ticker)) - Number(isWatchlisted(a.ticker));
+      if (watchDelta) return watchDelta;
 
-    return state.market.indexOf(a) - state.market.indexOf(b);
-  });
+      const aWatchIndex = watchlist.indexOf(a.ticker);
+      const bWatchIndex = watchlist.indexOf(b.ticker);
+      if (aWatchIndex >= 0 && bWatchIndex >= 0) return aWatchIndex - bWatchIndex;
+
+      return state.market.indexOf(a) - state.market.indexOf(b);
+    });
 }
 
 function positionValue(holdings) {
@@ -595,13 +623,23 @@ function renderStats() {
 }
 
 function renderMarket() {
-  const rows = marketForDisplay()
-    .map((stock) => {
-      const change = stockDayChange(stock);
-      const direction = change >= 0 ? "positive" : "negative";
-      const isActive = stock.ticker === activeTicker;
-      const watched = isWatchlisted(stock.ticker);
-      return `
+  const displayedMarket = marketForDisplay();
+  const searchInput = document.querySelector("#marketSearchInput");
+  const filterSelect = document.querySelector("#marketFilterSelect");
+  const sortSelect = document.querySelector("#marketSortSelect");
+
+  if (searchInput && searchInput.value !== marketSearch) searchInput.value = marketSearch;
+  if (filterSelect && filterSelect.value !== marketFilter) filterSelect.value = marketFilter;
+  if (sortSelect && sortSelect.value !== marketSort) sortSelect.value = marketSort;
+
+  const rows = displayedMarket.length
+    ? displayedMarket
+        .map((stock) => {
+          const change = stockDayChange(stock);
+          const direction = change >= 0 ? "positive" : "negative";
+          const isActive = stock.ticker === activeTicker;
+          const watched = isWatchlisted(stock.ticker);
+          return `
         <tr class="${isActive ? "active-row" : ""}" data-ticker="${stock.ticker}" tabindex="0" aria-label="Velg ${stock.ticker}">
           <td>
             <div class="ticker-cell">
@@ -622,12 +660,31 @@ function renderMarket() {
           <td><span class="signal">${signalFor(stock)}</span></td>
         </tr>
       `;
-    })
-    .join("");
+        })
+        .join("")
+    : `<tr class="empty-row"><td colspan="5">Ingen tickere matcher søket.</td></tr>`;
 
   document.querySelector("#marketRows").innerHTML = rows;
   document.querySelector("#feedStatus").textContent = feedPaused ? "Feed pauset" : "Feed aktiv";
+  document.querySelector("#marketResultCount").textContent = `Viser ${displayedMarket.length} av ${state.market.length}`;
   renderWatchlistStrip();
+}
+
+function setMarketSearch(query) {
+  marketSearch = query;
+  renderMarket();
+}
+
+function setMarketFilter(filter) {
+  marketFilter = MARKET_FILTERS.has(filter) ? filter : "all";
+  localStorage.setItem(MARKET_FILTER_KEY, marketFilter);
+  renderMarket();
+}
+
+function setMarketSort(sort) {
+  marketSort = MARKET_SORTS.has(sort) ? sort : "watchlist";
+  localStorage.setItem(MARKET_SORT_KEY, marketSort);
+  renderMarket();
 }
 
 function renderWatchlistStrip() {
@@ -1314,6 +1371,15 @@ document.querySelector("#tradeForm").addEventListener("submit", handleTrade);
 });
 document.querySelector("#tickerSelect").addEventListener("change", (event) => {
   setActiveTicker(event.target.value);
+});
+document.querySelector("#marketSearchInput").addEventListener("input", (event) => {
+  setMarketSearch(event.target.value);
+});
+document.querySelector("#marketFilterSelect").addEventListener("change", (event) => {
+  setMarketFilter(event.target.value);
+});
+document.querySelector("#marketSortSelect").addEventListener("change", (event) => {
+  setMarketSort(event.target.value);
 });
 document.querySelector("#marketRows").addEventListener("click", (event) => {
   const watchlistButton = event.target.closest("[data-watchlist-toggle]");

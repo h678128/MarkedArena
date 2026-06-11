@@ -483,6 +483,40 @@ canvas {
   font-size: 0.78rem;
 }
 
+.market-controls {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(130px, 0.6fr) minmax(150px, 0.7fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+
+.market-controls label {
+  gap: 5px;
+  font-size: 0.76rem;
+}
+
+.market-controls input,
+.market-controls select {
+  min-height: 38px;
+  font-size: 0.9rem;
+}
+
+.market-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+  color: var(--muted);
+  padding: 0 10px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .market-chart-wrap canvas {
   height: 172px;
   min-height: 172px;
@@ -571,8 +605,18 @@ tr:last-child td {
   border-bottom: 0;
 }
 
+.empty-row td {
+  color: var(--muted);
+  text-align: center;
+  padding: 20px 10px;
+}
+
 #marketRows tr {
   cursor: pointer;
+}
+
+#marketRows .empty-row {
+  cursor: default;
 }
 
 #marketRows tr:hover,
@@ -919,6 +963,14 @@ select {
 
   canvas {
     min-height: 220px;
+  }
+
+  .market-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .market-count {
+    justify-content: flex-start;
   }
 
   table {

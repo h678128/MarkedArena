@@ -130,6 +130,33 @@
               </div>
             </div>
             <div class="watchlist-strip" id="watchlistStrip" aria-label="Mine tickere"></div>
+            <div class="market-controls" aria-label="Tickerfilter">
+              <label class="market-search">
+                Søk
+                <input id="marketSearchInput" type="search" placeholder="Ticker eller selskap" autocomplete="off" />
+              </label>
+              <label>
+                Filter
+                <select id="marketFilterSelect">
+                  <option value="all">Alle</option>
+                  <option value="watchlist">Watchlist</option>
+                  <option value="Momentum">Momentum</option>
+                  <option value="Value">Value</option>
+                  <option value="Dip">Dip</option>
+                  <option value="Hold">Hold</option>
+                </select>
+              </label>
+              <label>
+                Sorter
+                <select id="marketSortSelect">
+                  <option value="watchlist">Watchlist først</option>
+                  <option value="day">Dag %</option>
+                  <option value="price">Pris</option>
+                  <option value="ticker">Ticker</option>
+                </select>
+              </label>
+              <span class="market-count" id="marketResultCount">Viser 0 av 0</span>
+            </div>
             <div class="market-chart-wrap">
               <canvas id="marketChart" width="720" height="180" aria-label="Børsutvikling"></canvas>
             </div>
