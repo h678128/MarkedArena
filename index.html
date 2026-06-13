@@ -187,7 +187,12 @@
                 <span class="window-tag" id="activeTickerSignal">Hold</span>
               </div>
             </div>
-            <canvas id="tickerChart" width="720" height="220" aria-label="Tickerutvikling"></canvas>
+            <canvas id="tickerChart" width="720" height="240" aria-label="Aksjeutvikling mot markedet"></canvas>
+            <div class="stock-chart-legend" aria-label="Tegnforklaring for aksjegraf">
+              <span><i class="legend-dot market-dot"></i>Marked</span>
+              <span><i class="candle-sample positive-candle"></i>Grønn candle</span>
+              <span><i class="candle-sample negative-candle"></i>Rød candle</span>
+            </div>
             <div class="ticker-details" id="tickerDetails"></div>
             <div class="agent-ticker-views" id="agentTickerViews"></div>
           </article>

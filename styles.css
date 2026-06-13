@@ -523,7 +523,42 @@ canvas {
 }
 
 .ticker-window canvas {
-  min-height: 210px;
+  min-height: 240px;
+}
+
+.stock-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 0 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.stock-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.candle-sample {
+  display: inline-block;
+  width: 12px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+}
+
+.positive-candle {
+  background: rgba(22, 124, 86, 0.78);
+  color: #167c56;
+}
+
+.negative-candle {
+  background: rgba(191, 65, 65, 0.78);
+  color: #bf4141;
 }
 
 .ticker-details,

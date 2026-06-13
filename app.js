@@ -798,6 +798,27 @@ function returnsFor(history) {
   return returns;
 }
 
+function performanceHistory(history) {
+  const base = history[0] || 1;
+  return history.map((value) => ((value - base) / base) * 100);
+}
+
+function marketPerformanceHistory() {
+  const longestHistory = Math.max(...state.market.map((stock) => stock.history.length));
+
+  return Array.from({ length: longestHistory }, (_, index) => {
+    const values = state.market
+      .map((stock) => {
+        const historyIndex = Math.min(index, stock.history.length - 1);
+        const base = stock.history[0] || stock.price || 1;
+        return ((stock.history[historyIndex] - base) / base) * 100;
+      })
+      .filter(Number.isFinite);
+
+    return values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  });
+}
+
 function riskStats(history) {
   const returns = returnsFor(history);
   const totalReturn = ((history.at(-1) - history[0]) / history[0]) * 100;
@@ -926,6 +947,9 @@ function renderTickerDetails() {
   const momentum = stockMomentum(stock);
   const owned = state.holdings[stock.ticker] || 0;
   const signal = signalFor(stock);
+  const stockReturn = performanceHistory(stock.history).at(-1) || 0;
+  const marketReturn = marketPerformanceHistory().slice(-stock.history.length).at(-1) || 0;
+  const marketDelta = stockReturn - marketReturn;
   const select = document.querySelector("#tickerSelect");
 
   if (select.value !== activeTicker) {
@@ -953,6 +977,7 @@ function renderTickerDetails() {
     <div><span>Signal</span><strong>${signal}</strong></div>
     <div><span>Value score</span><strong>${stock.valueScore}</strong></div>
     <div><span>Sentiment</span><strong>${stock.sentiment.toFixed(0)}</strong></div>
+    <div><span>Mot markedet</span><strong class="${marketDelta >= 0 ? "positive" : "negative"}">${formatPercent(marketDelta)}</strong></div>
     <div><span>Din beholdning</span><strong>${owned.toFixed(2)} aksjer</strong></div>
     <div><span>Markedsverdi</span><strong>${formatMoney(owned * stock.price)}</strong></div>
   `;
@@ -1077,11 +1102,147 @@ function drawComparisonChart() {
   drawChart(canvas, series, "Portefølje vs børs");
 }
 
+function drawPerformanceLine(context, history, bounds, color, width = 3) {
+  const { left, bottom, chartWidth, chartHeight, max, min } = bounds;
+  const range = Math.max(1, max - min);
+
+  context.strokeStyle = color;
+  context.lineWidth = width;
+  context.beginPath();
+  history.forEach((value, index) => {
+    const x = left + (chartWidth * index) / Math.max(1, history.length - 1);
+    const y = bottom - ((value - min) / range) * chartHeight;
+    if (index === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
+  context.stroke();
+  context.setLineDash([]);
+  context.lineWidth = 1;
+}
+
+function stockPerformanceCandles(stock, performance) {
+  return performance.map((close, index) => {
+    const open = index === 0 ? close : performance[index - 1];
+    const movement = Math.abs(close - open);
+    const wick = Math.max(0.28, movement * 0.45, stock.volatility * 100 * 0.2);
+
+    return {
+      open,
+      close,
+      high: Math.max(open, close) + wick,
+      low: Math.min(open, close) - wick,
+      up: close >= open,
+    };
+  });
+}
+
+function drawStockOverviewChart(canvas, stock) {
+  const context = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  context.scale(dpr, dpr);
+
+  const width = rect.width;
+  const height = rect.height;
+  const left = 36;
+  const right = width - 18;
+  const top = 34;
+  const bottom = height - 34;
+  const chartWidth = right - left;
+  const chartHeight = bottom - top;
+  const stockPerformance = performanceHistory(stock.history);
+  const marketPerformance = marketPerformanceHistory().slice(-stockPerformance.length);
+  const candles = stockPerformanceCandles(stock, stockPerformance);
+  const values = [...marketPerformance, ...candles.flatMap((candle) => [candle.high, candle.low]), 0];
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const padding = Math.max(1, (rawMax - rawMin) * 0.16);
+  const min = rawMin - padding;
+  const max = rawMax + padding;
+  const range = Math.max(1, max - min);
+  const toY = (value) => bottom - ((value - min) / range) * chartHeight;
+
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#eef3f0";
+  context.fillRect(0, 0, width, height);
+
+  context.strokeStyle = "#d6dfda";
+  context.lineWidth = 1;
+  for (let i = 0; i < 4; i += 1) {
+    const y = top + (chartHeight / 3) * i;
+    context.beginPath();
+    context.moveTo(left, y);
+    context.lineTo(right, y);
+    context.stroke();
+  }
+
+  const zeroY = toY(0);
+  context.strokeStyle = "#8f9ca2";
+  context.beginPath();
+  context.moveTo(left, zeroY);
+  context.lineTo(right, zeroY);
+  context.stroke();
+
+  context.setLineDash([5, 5]);
+  drawPerformanceLine(context, marketPerformance, { left, bottom, chartWidth, chartHeight, max, min }, "#285ca8", 2);
+
+  const step = chartWidth / Math.max(1, stockPerformance.length - 1);
+  const candleWidth = Math.max(7, Math.min(20, step * 0.5));
+  candles.forEach((candle, index) => {
+    const x = left + step * index;
+    const highY = toY(candle.high);
+    const lowY = toY(candle.low);
+    const openY = toY(candle.open);
+    const closeY = toY(candle.close);
+    const bodyTop = Math.min(openY, closeY);
+    const bodyHeight = Math.max(3, Math.abs(openY - closeY));
+    const color = candle.up ? "#167c56" : "#bf4141";
+
+    context.strokeStyle = color;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(x, highY);
+    context.lineTo(x, lowY);
+    context.stroke();
+
+    context.fillStyle = candle.up ? "rgba(22, 124, 86, 0.78)" : "rgba(191, 65, 65, 0.78)";
+    context.strokeStyle = color;
+    context.lineWidth = 1;
+    context.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+    context.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+  });
+
+  context.fillStyle = "#64727a";
+  context.font = "700 11px system-ui";
+  context.textAlign = "right";
+  [max, 0, min].forEach((value) => {
+    const y = Math.max(top + 10, Math.min(bottom - 4, toY(value)));
+    context.fillText(`${value.toFixed(1)}%`, left - 6, y + 4);
+  });
+
+  const tickCount = Math.min(5, stockPerformance.length);
+  context.textAlign = "center";
+  for (let i = 0; i < tickCount; i += 1) {
+    const ratio = tickCount === 1 ? 0 : i / (tickCount - 1);
+    const index = Math.round(ratio * (stockPerformance.length - 1));
+    const x = left + chartWidth * ratio;
+    const labelText = index === stockPerformance.length - 1 ? "Nå" : `T-${stockPerformance.length - 1 - index}`;
+    context.fillText(labelText, x, height - 10);
+  }
+
+  context.fillStyle = "#17211d";
+  context.font = "750 13px system-ui";
+  context.textAlign = "left";
+  context.fillText(`${stock.ticker} mot marked`, left, 22);
+}
+
 function drawTickerChart() {
   const canvas = document.querySelector("#tickerChart");
   const stock = stockByTicker(activeTicker) || state.market[0];
   if (!stock) return;
-  drawLineChart(canvas, stock.history, `${stock.ticker} historikk`, "#95630f");
+  drawStockOverviewChart(canvas, stock);
 }
 
 function setActiveTicker(ticker) {
