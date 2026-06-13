@@ -856,15 +856,65 @@ function renderAgentStrategies() {
     .join("");
 }
 
-function agentTickerView(agentId, stock) {
-  if (agentId === "benchmark") {
-    return state.agents.find((agent) => agent.id === "benchmark")?.holdings[stock.ticker] ? "I kurven" : "Utenfor kurv";
+function agentTickerReason(agentId, stock) {
+  const change = stockDayChange(stock);
+  const momentum = stockMomentum(stock);
+  const reasons = {
+    momentum: `Ser etter fart: momentum ${formatPercent(momentum)} og sentiment ${stock.sentiment.toFixed(0)}.`,
+    value: `Ser etter verdi: value score ${stock.valueScore} og trekker ned aksjer som har løpt for langt.`,
+    sentiment: `Vekter stemning: sentiment ${stock.sentiment.toFixed(0)} kombinert med dag ${formatPercent(change)}.`,
+    contrarian: `Leter etter dip: verdi ${stock.valueScore} og kortsiktig bevegelse ${formatPercent(change)}.`,
+    lowvol: `Prioriterer ro: volatilitet ${(stock.volatility * 100).toFixed(2)}% og stabil sentiment.`,
+    quality: `Ser etter balanse: value ${stock.valueScore}, sentiment ${stock.sentiment.toFixed(0)} og moderat momentum.`,
+    swing: `Jakter kort setup: dag ${formatPercent(change)} og momentum ${formatPercent(momentum)}.`,
+  };
+
+  return reasons[agentId] || "Følger aksjen som del av bred markedsreferanse.";
+}
+
+function agentTickerInsight(note, stock) {
+  const agent = state.agents.find((candidate) => candidate.id === note.id);
+  const quantity = agent?.holdings?.[stock.ticker] || 0;
+  const exposureValue = quantity * stock.price;
+  const agentValue = agent ? portfolioValue(agent) : 0;
+  const exposure = agentValue > 0 ? (exposureValue / agentValue) * 100 : 0;
+
+  if (note.id === "benchmark") {
+    const inBasket = quantity > 0;
+    return {
+      ...note,
+      score: "Kurv",
+      rank: inBasket ? "Inkludert" : "Utenfor",
+      status: inBasket ? "Eier" : "Uten posisjon",
+      tone: inBasket ? "positive" : "neutral",
+      exposure,
+      exposureValue,
+      reason: inBasket
+        ? "Ticker ligger i benchmarkkurven og brukes som markedsreferanse."
+        : "Ticker er utenfor benchmarkkurven akkurat nå.",
+    };
   }
 
-  const agent = state.agents.find((candidate) => candidate.id === agentId);
+  const score = agentScore(note.id, stock);
+  const rankedTickers = [...state.market]
+    .sort((a, b) => agentScore(note.id, b) - agentScore(note.id, a))
+    .map((candidate) => candidate.ticker);
+  const rank = rankedTickers.indexOf(stock.ticker) + 1;
   const target = agent ? targetForAgent(agent) : null;
-  const score = agentScore(agentId, stock);
-  return target?.ticker === stock.ticker ? `Favoritt (${score.toFixed(1)})` : `Score ${score.toFixed(1)}`;
+  const isFavorite = target?.ticker === stock.ticker;
+  const status = isFavorite ? "Favoritt" : rank <= 3 ? "Sterk kandidat" : rank <= 8 ? "Overvåker" : "Lav prioritet";
+  const tone = isFavorite || rank <= 3 ? "positive" : rank <= 8 ? "neutral" : "negative";
+
+  return {
+    ...note,
+    score: score.toFixed(1),
+    rank: `#${rank} av ${state.market.length}`,
+    status,
+    tone,
+    exposure,
+    exposureValue,
+    reason: agentTickerReason(note.id, stock),
+  };
 }
 
 function renderTickerDetails() {
@@ -908,12 +958,27 @@ function renderTickerDetails() {
   `;
   document.querySelector("#agentTickerViews").innerHTML = agentStrategyNotes
     .map(
-      (agent) => `
-        <div class="agent-view-row">
-          <span>${agent.name}</span>
-          <strong>${agentTickerView(agent.id, stock)}</strong>
+      (agent) => {
+        const insight = agentTickerInsight(agent, stock);
+        return `
+        <div class="agent-view-card">
+          <div class="agent-view-head">
+            <div>
+              <h4>${insight.name}</h4>
+              <span>${insight.style}</span>
+            </div>
+            <strong class="${insight.tone}">${insight.status}</strong>
+          </div>
+          <p>${insight.reason}</p>
+          <div class="agent-view-metrics">
+            <div><span>Score</span><strong>${insight.score}</strong></div>
+            <div><span>Rang</span><strong>${insight.rank}</strong></div>
+            <div><span>Eksponering</span><strong>${insight.exposure.toFixed(1)}%</strong></div>
+            <div><span>Verdi</span><strong>${formatMoney(insight.exposureValue)}</strong></div>
+          </div>
         </div>
-      `,
+      `;
+      },
     )
     .join("");
 }

@@ -539,7 +539,7 @@ canvas {
 }
 
 .ticker-details div,
-.agent-view-row {
+.agent-view-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -550,20 +550,75 @@ canvas {
   background: #fbfcfc;
 }
 
-.ticker-details span,
-.agent-view-row span {
+.ticker-details span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 750;
 }
 
-.ticker-details strong,
-.agent-view-row strong {
+.ticker-details strong {
   font-size: 0.9rem;
 }
 
 .agent-ticker-views {
   padding-top: 0;
+}
+
+.agent-view-card {
+  display: grid;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.agent-view-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.agent-view-head h4,
+.agent-view-card p {
+  margin: 0;
+}
+
+.agent-view-head h4 {
+  font-size: 0.95rem;
+}
+
+.agent-view-head span,
+.agent-view-card p,
+.agent-view-metrics span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.agent-view-card p {
+  line-height: 1.4;
+}
+
+.agent-view-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.agent-view-metrics div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.agent-view-metrics strong {
+  overflow: hidden;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table-wrap {
@@ -971,6 +1026,10 @@ select {
 
   .market-count {
     justify-content: flex-start;
+  }
+
+  .agent-view-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   table {
